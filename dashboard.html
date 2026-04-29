@@ -212,23 +212,37 @@ const INITIAL_MSGS = [
   { role: 'system', text: 'System initialized. Upload a PDF to begin the interview session.', ts: '—' },
 ];
 
-const MOCK_CONVO = [
+const OPENING_VARIANTS = [
   {
-    role: 'agent',
-    text: 'שלום! קיבלתי את קורות החיים שלך ✅\n\nזיהיתי 3 טכנולוגיות מרכזיות:\n• Node.js + Express — מערכת API עם JWT auth\n• React — ממשק משתמש\n• MongoDB — מסד הנתונים\n\n---\n\n**השאלה:** בפרויקט שבנית עם Node.js ו-JWT, איך התמודדת עם בעיית רענון הטוקן כשהוא פג תוקף? מה ההבדל בין access token ל-refresh token באסטרטגיה שלך?',
-    ts: '09:41:08',
+    techs: ['Node.js + Express', 'React', 'MongoDB'],
+    text: 'שלום! קיבלתי את קורות החיים שלך ✅\n\nסרקתי את הפרויקטים שלך וזיהיתי 3 טכנולוגיות מרכזיות שעליהן נתמקד:\n• Node.js + Express — בניית REST API\n• React — ממשק משתמש\n• MongoDB — מסד נתונים\n\n---\n\n**השאלה:** בפרויקט ה-Node.js שבנית, כשמשתמש שולח בקשה ל-endpoint מוגן — מה בדיוק קורה מאחורי הקלעים? תאר את זרימת ה-Middleware מרגע הבקשה ועד לתגובה.',
   },
   {
-    role: 'user',
-    text: 'השתמשתי ב-access token עם תוקף קצר של 15 דקות ו-refresh token עם תוקף של 7 ימים.',
-    ts: '09:42:31',
+    techs: ['Python + Flask', 'PostgreSQL', 'Docker'],
+    text: 'שלום! עיינתי בקורות החיים שלך ✅\n\nהפרויקטים שלך חושפים שילוב מעניין של טכנולוגיות:\n• Python + Flask — backend ו-REST API\n• PostgreSQL — מסד נתונים רלציוני\n• Docker — containerization\n\n---\n\n**השאלה:** בפרויקט ה-Flask שלך, כשהעלית אותו ל-Docker — איך הגדרת את ה-environment variables בצורה מאובטחת? מה ההבדל בין להעביר אותם ב-Dockerfile לבין ב-docker-compose?',
   },
   {
-    role: 'agent',
-    text: 'תשובה חלקית ✓\n\nנכון לגבי ה-split — גישה נכונה. אבל חסרים שני עקרונות:\n\n• **Refresh Token Rotation** — כל שימוש ב-refresh token מבטל אותו ומנפיק חדש. מונע replay attacks.\n• **Blacklist in Redis** — tokens שבוטלו נשמרים ב-Redis עם TTL זהה לתוקף המקורי.\n\n---\n\n**השאלה:** איך היית מאבטח את ה-MongoDB שלך מפני NoSQL Injection?',
-    ts: '09:42:45',
+    techs: ['React + Redux', 'Firebase', 'REST API'],
+    text: 'ברוך הבא! קראתי את הפרויקטים שלך בעיון ✅\n\nראיתי שעבדת עם stack מודרני לחלוטין:\n• React + Redux — state management בצד הלקוח\n• Firebase — authentication ו-real-time database\n• REST API — תקשורת עם שרתים חיצוניים\n\n---\n\n**השאלה:** בפרויקט ה-React שלך עם Redux — מתי בחרת לשים state ב-Redux לעומת ב-local state של הקומפוננטה? מה הקריטריונים להחלטה הזו?',
+  },
+  {
+    techs: ['Next.js', 'Prisma + PostgreSQL', 'Vercel'],
+    text: 'שלום! עברתי על קורות החיים שלך ✅\n\nזיהיתי ארכיטקטורה full-stack מרשימה:\n• Next.js — SSR ו-SSG\n• Prisma + PostgreSQL — ORM ומסד נתונים\n• Vercel — deployment\n\n---\n\n**השאלה:** ב-Next.js יש לך אפשרות ל-SSR, SSG ו-ISR. בפרויקט שלך, איך החלטת איזה rendering strategy להשתמש בכל עמוד? תן דוגמה קונקרטית.',
+  },
+  {
+    techs: ['Django REST Framework', 'React', 'AWS S3'],
+    text: 'שלום! סיימתי לנתח את קורות החיים שלך ✅\n\nהפרויקטים שלך מציגים ניסיון עשיר ב:\n• Django REST Framework — backend מלא\n• React — SPA בצד הלקוח\n• AWS S3 — אחסון קבצים בענן\n\n---\n\n**השאלה:** בפרויקט שבנית עם Django ו-AWS S3 — כשמשתמש מעלה קובץ, האם הקובץ עובר דרך ה-Django server שלך או שנשלח ישירות ל-S3? מה היתרון של כל גישה מבחינת ביצועים ועלות?',
+  },
+  {
+    techs: ['TypeScript + Express', 'Redis', 'Microservices'],
+    text: 'ברוך הבא! ניתחתי את הניסיון שלך ✅\n\nרמת הארכיטקטורה בפרויקטים שלך גבוהה:\n• TypeScript + Express — backend עם type safety\n• Redis — caching ו-session management\n• Microservices — ארכיטקטורה מבוזרת\n\n---\n\n**השאלה:** בארכיטקטורת ה-microservices שבנית — כששירות אחד נכשל, איך מנעת cascade failure שיפיל את כל המערכת? האם השתמשת ב-Circuit Breaker pattern?',
   },
 ];
+
+const getRandomOpening = () => {
+  const variant = OPENING_VARIANTS[Math.floor(Math.random() * OPENING_VARIANTS.length)];
+  return { role: 'agent', text: variant.text, ts: new Date().toLocaleTimeString('en-US', { hour12: false }) };
+};
 
 const FLOW_STEPS = [
   { type: 'trigger',      label: '[Trigger]',      icon: '⬆',  color: '#f5a623', msg: 'User uploaded CV.pdf → bot received document',         detail: 'File size: 3.2 KB · Source: Telegram' },
@@ -603,7 +617,7 @@ const App = () => {
     await runFlow(FLOW_STEPS, 750);
 
     await new Promise(r => setTimeout(r, 400));
-    setMessages([...INITIAL_MSGS, MOCK_CONVO[0]]);
+    setMessages([...INITIAL_MSGS, getRandomOpening()]);
     setSimulating(false);
   }, [simulating, runFlow]);
 
