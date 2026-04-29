@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AGENT//OS — Debug Console</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { mono: ['JetBrains Mono', 'monospace'] },
+          colors: {
+            t: {
+              bg:     '#06080e',
+              panel:  '#0b0f1a',
+              deep:   '#090d18',
+              border: '#1a2540',
+              dim:    '#111928',
+              muted:  '#2a3a50',
+              ghost:  '#3a4a5c',
+              text:   '#7a8fa6',
+              bright: '#cdd9ea',
+              teal:   '#00d4a0',
+              amber:  '#f5a623',
+              blue:   '#4d9fff',
+              violet: '#a78bfa',
+              green:  '#4ade80',
+              red:    '#f87171',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    *, *::before, *::after { font-family: 'JetBrains Mono', monospace; box-sizing: border-box; }
+    body { background: #06080e; margin: 0; overflow: hidden; }
+
+    ::-webkit-scrollbar       { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #0b0f1a; }
+    ::-webkit-scrollbar-thumb { background: #1a2540; border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00d4a0; }
+
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(0,212,160,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,160,.025) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    .panel {
+      background: #0b0f1a;
+      border: 1px solid #1a2540;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    /* Corner brackets */
+    .panel::before, .panel::after {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      border-color: #00d4a0;
+      border-style: solid;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .panel::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+    .panel::after  { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; box-shadow: 0 0 6px currentColor; }
+      50%       { opacity: .35; box-shadow: none; }
+    }
+    .pulse { animation: pulse-dot 1.8s ease-in-out infinite; }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .log-in { animation: slide-in .28s ease-out; }
+
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fade-up .35s ease-out; }
+
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+    .cursor { animation: blink 1s step-end infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin .8s linear infinite; display: inline-block; }
+
+    .tab-pill {
+      position: relative;
+      transition: color .15s;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tab-pill.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: 1px;
+    }
+
+    .btn-primary {
+      transition: opacity .15s, box-shadow .15s;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: .85; }
+    .btn-primary:active:not(:disabled) { opacity: .7; }
+
+    .input-field:focus {
+      outline: none;
+      border-color: #00d4a0;
+      box-shadow: 0 0 0 1px #00d4a020;
+    }
+  </style>
+</head>
+
+<body class="h-screen overflow-hidden">
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ─── static data ─── */
+
+const BRAIN_FILES = {
+  'soul.md': `# AGENT PERSONA: THE SENIOR TECH LEAD
+
+## IDENTITY
+Elite technical mentor, software architect, and senior
+interviewer. Specializes in analyzing technical documents
+(CVs/Resumes) and testing real-world engineering knowledge.
+
+- Holistic document analysis: projects, architecture, domains
+- Extracts broader concepts from candidate's work history
+- NEVER asks HR questions — ONLY deep technical, architectural,
+  or security questions inspired by actual project work
+
+## TONE AND STYLE
+- Professional, clear, and encouraging Hebrew (עברית)
+- Patient but strict about accuracy
+- Acts as Senior Tech Lead evaluating real-world skills
+
+## CORE DIRECTIVE
+Test architecture, system design, security, and integration
+— NOT basic language syntax.`,
+
+  'skills.md': `# CORE SKILL: THE EXAMINER WORKFLOW
+
+## STEP 1: EVALUATE & EXPLAIN
+Assess the user's answer strictly:
+
+→ FULLY CORRECT
+  Validate briefly, then add an advanced edge-case tip.
+
+→ PARTIAL / WRONG
+  Provide a detailed, deep-dive explanation.
+  Break down the "Why" and "How" until 100% clear.
+
+## STEP 2: THE DIVIDER
+Always insert markdown horizontal rule \`---\`
+to visually separate feedback from the next question.
+
+## STEP 3: THE NEW QUESTION
+Ask exactly ONE new technical question.
+  • Bold title: **השאלה:**
+  • Be holistic: analyze a specific project or tool combo
+  • Real-world scenario format
+  • Focus: Security, Scalability, DB Design, API Architecture`,
+
+  'memory_rules.md': `# MEMORY & CONTEXT RULES
+
+## MATERIAL DEPENDENCY
+Base ALL questions STRICTLY on the provided PDF context.
+Do not introduce outside concepts unless needed to explain
+a concept the user failed to understand.
+
+## HISTORY AWARENESS
+Review recent conversation history.
+Never ask the exact same question twice.
+Keep the interview moving forward.
+
+## SPECIAL TRIGGERS
+
+→ HINT (רמז)
+  Provide a subtle clue (max 10 words).
+  Do NOT give away the answer.
+  Wait for the user to try answering again.
+
+→ SKIP (דלג)
+  Treat as if the user answered incorrectly.
+  1. Full deep-dive explanation of current question
+  2. Insert divider ---
+  3. Generate a new question from different material`,
+};
+
+const INITIAL_MSGS = [
+  { role: 'system', text: 'System initialized. Upload a PDF to begin the interview session.', ts: '—' },
+];
+
+const MOCK_CONVO = [
+  {
+    role: 'agent',
+    text: 'שלום! קיבלתי את קורות החיים שלך ✅\n\nזיהיתי 3 טכנולוגיות מרכזיות:\n• Node.js + Express — מערכת API עם JWT auth\n• React — ממשק משתמש\n• MongoDB — מסד הנתונים\n\n---\n\n**השאלה:** בפרויקט שבנית עם Node.js ו-JWT, איך התמודדת עם בעיית רענון הטוקן כשהוא פג תוקף? מה ההבדל בין access token ל-refresh token באסטרטגיה שלך?',
+    ts: '09:41:08',
+  },
+  {
+    role: 'user',
+    text: 'השתמשתי ב-access token עם תוקף קצר של 15 דקות ו-refresh token עם תוקף של 7 ימים.',
+    ts: '09:42:31',
+  },
+  {
+    role: 'agent',
+    text: 'תשובה חלקית ✓\n\nנכון לגבי ה-split — גישה נכונה. אבל חסרים שני עקרונות:\n\n• **Refresh Token Rotation** — כל שימוש ב-refresh token מבטל אותו ומנפיק חדש. מונע replay attacks.\n• **Blacklist in Redis** — tokens שבוטלו נשמרים ב-Redis עם TTL זהה לתוקף המקורי.\n\n---\n\n**השאלה:** איך היית מאבטח את ה-MongoDB שלך מפני NoSQL Injection?',
+    ts: '09:42:45',
+  },
+];
+
+const FLOW_STEPS = [
+  { type: 'trigger',      label: '[Trigger]',      icon: '⬆',  color: '#f5a623', msg: 'User uploaded CV.pdf → bot received document',         detail: 'File size: 3.2 KB · Source: Telegram' },
+  { type: 'tool',         label: '[Tool]',          icon: '⚙',  color: '#a78bfa', msg: 'Running tools/pdf_handler.py',                          detail: '1,247 chars extracted · max cap: 12,000' },
+  { type: 'orchestrator', label: '[Orchestrator]',  icon: '◈',  color: '#4d9fff', msg: 'Reading agent_config/* → assembling modular brain',     detail: 'soul.md + skills.md + memory_rules.md merged' },
+  { type: 'memory',       label: '[Memory]',        icon: '◎',  color: '#60d4b0', msg: 'Applying sliding-window to chat history',               detail: 'Window: last 6 messages · Dropped: 0' },
+  { type: 'api',          label: '[API]',            icon: '◇',  color: '#4d9fff', msg: 'Sending payload → Groq (llama-3.1-8b-instant)',         detail: 'System: 1,894 tok · History: 953 tok · Temp: 0.6' },
+  { type: 'response',     label: '[Response]',      icon: '✓',  color: '#4ade80', msg: 'Response received · parsing Markdown · splitting on ---', detail: 'Latency: 1.23 s · Output: 342 tok' },
+];
+
+/* ─── tiny svg icons ─── */
+const I = ({ d, size = 14, fill = 'none', stroke = 'currentColor', sw = 1.5, vb = '0 0 24 24' }) => (
+  <svg width={size} height={size} viewBox={vb} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+    {typeof d === 'string' ? <path d={d} /> : d}
+  </svg>
+);
+
+const ICONS = {
+  brain:    <I d={<><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></>} />,
+  file:     <I d={<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></>} />,
+  send:     <I d={<><path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M22 2 11 13"/></>} />,
+  upload:   <I d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>} />,
+  terminal: <I d={<><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></>} />,
+  zap:      <I d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor" stroke="none" />,
+  play:     <I d={<polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none" />} />,
+  bulb:     <I d={<><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></>} />,
+  skip:     <I d={<><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></>} />,
+  check:    <I d={<polyline points="20 6 9 17 4 12" />} sw={2} />,
+  refresh:  <I d={<><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></>} />,
+};
+
+/* ─── shared components ─── */
+
+const Dot = ({ on, color = '#00d4a0' }) => (
+  <span
+    className={on ? 'pulse' : ''}
+    style={{
+      display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+      background: on ? color : '#1a2540',
+      color,
+      flexShrink: 0,
+    }}
+  />
+);
+
+const PanelHead = ({ icon, title, badge, right }) => (
+  <div className="flex items-center justify-between px-4 py-2.5 border-b border-t-border" style={{ borderColor: '#1a2540', background: '#090d18' }}>
+    <div className="flex items-center gap-2">
+      <span style={{ color: '#00d4a0' }}>{icon}</span>
+      <span className="text-[11px] font-semibold tracking-widest" style={{ color: '#cdd9ea' }}>{title}</span>
+      {badge && <span className="px-1.5 py-px text-[9px] rounded" style={{ background: '#1a2540', color: '#4d9fff' }}>{badge}</span>}
+    </div>
+    {right}
+  </div>
+);
+
+/* ─── LEFT: Brain Panel ─── */
+const BrainPanel = ({ active, setActive, hasPdf }) => {
+  const tabs = [
+    { id: 'soul.md',         short: 'soul',   color: '#f5a623' },
+    { id: 'skills.md',       short: 'skills', color: '#4d9fff' },
+    { id: 'memory_rules.md', short: 'memory', color: '#a78bfa' },
+  ];
+
+  return (
+    <div className="panel flex flex-col h-full">
+      <PanelHead
+        icon={ICONS.brain}
+        title="AGENT BRAIN"
+        badge="3 modules"
+        right={<Dot on />}
+      />
+
+      {/* Tab strip */}
+      <div className="flex border-b" style={{ borderColor: '#1a2540', background: '#090d18' }}>
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={`tab-pill px-3 py-2 text-[10px] font-medium border-0 bg-transparent ${active === t.id ? 'active' : ''}`}
+            style={{
+              color: active === t.id ? t.color : '#3a4a5c',
+              '--tw-ring-color': t.color,
+            }}
+          >
+            {active === t.id && (
+              <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: t.color, boxShadow: `0 0 6px ${t.color}` }} />
+            )}
+            <span style={{ color: active === t.id ? t.color : '#1a2540' }}>●</span>{' '}
+            {t.short}.md
+          </button>
+        ))}
+      </div>
+
+      {/* File content */}
+      <div className="flex-1 overflow-y-auto p-4 text-[10.5px] leading-relaxed" style={{ color: '#7a8fa6' }}>
+        <pre className="whitespace-pre-wrap break-words">{BRAIN_FILES[active]}</pre>
+      </div>
+
+      {/* PDF slot */}
+      <div className="p-3 border-t" style={{ borderColor: '#1a2540', background: '#090d18' }}>
+        <div className="text-[9px] tracking-widest mb-2" style={{ color: '#2a3a50' }}>LOADED DOCUMENT</div>
+        {hasPdf ? (
+          <div className="flex items-center gap-2.5 p-2 rounded border" style={{ border: '1px solid #1a3028', background: '#0d1a14' }}>
+            <div className="w-8 h-10 rounded flex items-center justify-center text-[8px] font-bold flex-shrink-0" style={{ background: '#1a2540', color: '#f5a623' }}>PDF</div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold truncate" style={{ color: '#cdd9ea' }}>CV_TomerCohen_2024.pdf</div>
+              <div className="text-[9px] mt-0.5" style={{ color: '#3a4a5c' }}>1,247 chars · 2 pages · pypdf</div>
+              <div className="flex items-center gap-1 mt-1">
+                <span style={{ color: '#4ade80' }}>{ICONS.check}</span>
+                <span className="text-[9px]" style={{ color: '#4ade80' }}>In context</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 p-2.5 rounded border text-[10px]" style={{ border: '1px dashed #1a2540', color: '#2a3a50' }}>
+            {ICONS.file} No document loaded
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ─── CENTER: Chat Panel ─── */
+const ChatPanel = ({ messages, onSend, onHint, onSkip, onUpload, hasPdf }) => {
+  const [input, setInput] = useState('');
+  const bottomRef = useRef(null);
+  const fileRef   = useRef(null);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const send = () => {
+    const t = input.trim();
+    if (!t) return;
+    onSend(t);
+    setInput('');
+  };
+
+  const roleStyle = {
+    user:   { bg: '#111928', border: '#1a2540',  label: '#4d9fff', name: 'You' },
+    agent:  { bg: '#0d1a14', border: '#1a3028',  label: '#00d4a0', name: 'Agent//OS' },
+    system: { bg: '#0b0f1a', border: '#111928',  label: '#2a3a50', name: 'SYSTEM' },
+  };
+
+  return (
+    <div className="panel flex flex-col h-full">
+      <PanelHead
+        icon={ICONS.terminal}
+        title="USER INTERACTION"
+        badge={hasPdf ? 'SESSION ACTIVE' : 'WAITING FOR PDF'}
+        right={
+          <div className="flex items-center gap-1.5">
+            <Dot on={hasPdf} color="#4ade80" />
+            <span className="text-[9px]" style={{ color: '#3a4a5c' }}>{hasPdf ? 'LIVE' : 'IDLE'}</span>
+          </div>
+        }
+      />
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {messages.map((m, i) => {
+          const s = roleStyle[m.role] || roleStyle.system;
+          return (
+            <div key={i} className="fade-up">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[9px] font-bold" style={{ color: s.label }}>{s.name}</span>
+                <span className="text-[9px]" style={{ color: '#2a3a50' }}>{m.ts}</span>
+              </div>
+              <div className="p-3 rounded text-[11px] leading-relaxed border" style={{ background: s.bg, borderColor: s.border, color: m.role === 'system' ? '#2a3a50' : '#8aa0b8' }}>
+                <pre className="whitespace-pre-wrap break-words" dir="rtl" style={{ fontFamily: 'inherit', textAlign: 'right', unicodeBidi: 'plaintext' }}>{m.text}</pre>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Quick actions */}
+      <div className="px-4 py-2 flex gap-2 border-t" style={{ borderColor: '#1a2540', background: '#090d18' }}>
+        <button
+          onClick={onHint} disabled={!hasPdf}
+          className="btn-primary flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ background: '#0d0f1a', border: '1px solid #f5a623', color: '#f5a623' }}
+        >
+          {ICONS.bulb} רמז 💡
+        </button>
+        <button
+          onClick={onSkip} disabled={!hasPdf}
+          className="btn-primary flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ background: '#0d0f1a', border: '1px solid #3a4a5c', color: '#7a8fa6' }}
+        >
+          {ICONS.skip} דלג ⏭️
+        </button>
+        <button
+          onClick={() => alert('Session summary: 3 questions answered, 2 correct, 1 skipped.\nStrong areas: JWT auth.\nImprovement: NoSQL security.')}
+          disabled={!hasPdf}
+          className="btn-primary ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ background: '#0d0f1a', border: '1px solid #1a2540', color: '#3a4a5c' }}
+        >
+          📊 סיום
+        </button>
+      </div>
+
+      {/* Input row */}
+      <div className="p-3 border-t" style={{ borderColor: '#1a2540' }}>
+        <div className="flex gap-2">
+          <button
+            onClick={() => fileRef.current?.click()}
+            title="Upload PDF"
+            className="btn-primary flex items-center gap-1 px-2.5 py-2 rounded text-[9px] flex-shrink-0 transition-colors"
+            style={{ background: '#0d1020', border: '1px solid #1a2540', color: '#3a4a5c' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#f5a623'; e.currentTarget.style.color = '#f5a623'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#1a2540'; e.currentTarget.style.color = '#3a4a5c'; }}
+          >
+            {ICONS.upload} PDF
+          </button>
+          <input type="file" ref={fileRef} accept=".pdf" className="hidden"
+            onChange={e => { if (e.target.files[0]) onUpload(e.target.files[0]); }} />
+
+          <input
+            className="input-field flex-1 rounded px-3 py-2 text-[11px] border transition-colors"
+            style={{ background: '#0d1020', borderColor: '#1a2540', color: '#cdd9ea' }}
+            placeholder={hasPdf ? 'Type your answer… (Enter to send)' : 'Upload a PDF to start the session…'}
+            disabled={!hasPdf}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+          />
+          <button
+            onClick={send} disabled={!hasPdf || !input.trim()}
+            className="btn-primary px-3 py-2 rounded flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ background: '#00d4a0', color: '#06080e' }}
+          >
+            {ICONS.send}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── RIGHT: Log Panel ─── */
+const LogEntry = ({ step }) => (
+  <div className="log-in flex gap-3 py-3 border-b last:border-0" style={{ borderColor: '#111928' }}>
+    <div className="flex flex-col items-center gap-1 flex-shrink-0">
+      <div
+        className="w-6 h-6 rounded flex items-center justify-center text-[11px] font-bold"
+        style={{ background: `${step.color}18`, color: step.color, border: `1px solid ${step.color}35` }}
+      >
+        {step.icon}
+      </div>
+      <div className="w-px flex-1 min-h-[6px]" style={{ background: `${step.color}20` }} />
+    </div>
+    <div className="min-w-0 pb-1">
+      <div className="flex items-center gap-2 mb-0.5">
+        <span className="text-[10px] font-bold" style={{ color: step.color }}>{step.label}</span>
+        <span className="text-[9px]" style={{ color: '#2a3a50' }}>{step.ts}</span>
+      </div>
+      <div className="text-[10.5px] leading-snug" style={{ color: '#8aa0b8' }}>{step.msg}</div>
+      {step.detail && (
+        <div className="mt-1 text-[9.5px]" style={{ color: '#3a4a5c' }}>{step.detail}</div>
+      )}
+    </div>
+  </div>
+);
+
+const LogPanel = ({ logs, simulating, onSimulate, onClear }) => {
+  const bottomRef = useRef(null);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
+
+  const totalTok = logs.some(l => l.type === 'api') ? '2,847' : '—';
+  const latency  = logs.some(l => l.type === 'response') ? '1.23 s' : '—';
+
+  return (
+    <div className="panel flex flex-col h-full">
+      <PanelHead
+        icon={ICONS.zap}
+        title="EXECUTION TRACE"
+        badge={`${logs.length} events`}
+        right={
+          <button
+            onClick={onSimulate} disabled={simulating}
+            className="btn-primary flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: simulating ? '#1a2540' : '#00d4a018',
+              border: `1px solid ${simulating ? '#1a2540' : '#00d4a0'}`,
+              color: simulating ? '#3a4a5c' : '#00d4a0',
+            }}
+          >
+            {simulating
+              ? <><span className="spin" style={{ display: 'inline-block' }}>◌</span> Running…</>
+              : <>{ICONS.play} Simulate Flow</>
+            }
+          </button>
+        }
+      />
+
+      {/* Stats ribbon */}
+      {logs.length > 0 && (
+        <div className="px-4 py-1.5 flex gap-4 border-b text-[9.5px] fade-up" style={{ borderColor: '#111928', background: '#090d18' }}>
+          <span style={{ color: '#3a4a5c' }}>Steps: <span style={{ color: '#cdd9ea' }}>{logs.length}</span></span>
+          <span style={{ color: '#3a4a5c' }}>Model: <span style={{ color: '#4d9fff' }}>llama-3.1-8b</span></span>
+          <span style={{ color: '#3a4a5c' }}>Tokens: <span style={{ color: '#a78bfa' }}>{totalTok}</span></span>
+          <span style={{ color: '#3a4a5c' }}>Latency: <span style={{ color: '#4ade80' }}>{latency}</span></span>
+        </div>
+      )}
+
+      {/* Log entries */}
+      <div className="flex-1 overflow-y-auto px-4 pt-3">
+        {logs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center select-none">
+            <div className="text-5xl mb-3" style={{ opacity: .1 }}>◈</div>
+            <div className="text-[11px]" style={{ color: '#2a3a50' }}>No execution trace yet.</div>
+            <div className="text-[10px] mt-1" style={{ color: '#1a2540' }}>Click "Simulate Flow" or upload a PDF.</div>
+          </div>
+        ) : (
+          logs.map((s, i) => <LogEntry key={i} step={s} />)
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-2 flex items-center justify-between border-t" style={{ borderColor: '#111928', background: '#090d18' }}>
+        <div className="flex items-center gap-2">
+          <Dot on={simulating} />
+          <span className="text-[9px]" style={{ color: '#3a4a5c' }}>{simulating ? 'EXECUTING…' : 'READY'}</span>
+        </div>
+        {logs.length > 0 && (
+          <button onClick={onClear} className="text-[9px] transition-colors" style={{ color: '#2a3a50', background: 'none', border: 'none', cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#3a4a5c'}
+            onMouseLeave={e => e.currentTarget.style.color = '#2a3a50'}>
+            CLEAR TRACE
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ─── ROOT APP ─── */
+const App = () => {
+  const [activeFile, setActiveFile] = useState('soul.md');
+  const [messages,   setMessages]   = useState(INITIAL_MSGS);
+  const [logs,       setLogs]       = useState([]);
+  const [simulating, setSimulating] = useState(false);
+  const [hasPdf,     setHasPdf]     = useState(false);
+
+  const ts = () => new Date().toLocaleTimeString('en-US', { hour12: false });
+
+  const appendLog = useCallback((step) => {
+    setLogs(prev => [...prev, { ...step, ts: ts() }]);
+  }, []);
+
+  const runFlow = useCallback(async (steps, delay = 700) => {
+    for (let i = 0; i < steps.length; i++) {
+      await new Promise(r => setTimeout(r, i === 0 ? 300 : delay));
+      appendLog(steps[i]);
+    }
+  }, [appendLog]);
+
+  const simulate = useCallback(async () => {
+    if (simulating) return;
+    setSimulating(true);
+    setLogs([]);
+    setHasPdf(true);
+    setMessages([
+      ...INITIAL_MSGS,
+      { role: 'system', text: '⟳ Simulation started — running mock execution flow…', ts: ts() },
+    ]);
+
+    await runFlow(FLOW_STEPS, 750);
+
+    await new Promise(r => setTimeout(r, 400));
+    setMessages([...INITIAL_MSGS, MOCK_CONVO[0]]);
+    setSimulating(false);
+  }, [simulating, runFlow]);
+
+  const handleSend = useCallback(async (text) => {
+    setMessages(prev => [...prev, { role: 'user', text, ts: ts() }]);
+
+    const msgSteps = [
+      { type: 'trigger', label: '[Trigger]', icon: '→', color: '#f5a623',
+        msg: `User sent: "${text.length > 45 ? text.slice(0, 45) + '…' : text}"`,
+        detail: `${text.length} chars input` },
+      ...FLOW_STEPS.slice(2),
+    ];
+
+    for (let i = 0; i < msgSteps.length; i++) {
+      await new Promise(r => setTimeout(r, (i + 1) * 550));
+      appendLog(msgSteps[i]);
+    }
+
+    await new Promise(r => setTimeout(r, 700));
+    setMessages(prev => [...prev, {
+      role: 'agent',
+      text: 'תשובה טובה ✓\n\nנכון לגבי השימוש ב-whitelist. נוסיף:\n\n• **Mongoose Schema Validation** — האכיפה ברמת ה-schema מונעת הזרקת שדות לא צפויים.\n• **$where / eval() — אסור** בכל מצב. גם מפני ביצועים וגם מפני security.\n\n---\n\n**השאלה:** איך היית מממש rate limiting ב-Express למניעת brute force על endpoint של login?',
+      ts: ts(),
+    }]);
+  }, [appendLog]);
+
+  const handleUpload = useCallback(async (file) => {
+    setHasPdf(true);
+    setMessages(prev => [...prev, {
+      role: 'system',
+      text: `📎 Uploaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB) — extracting text…`,
+      ts: ts(),
+    }]);
+    await simulate();
+  }, [simulate]);
+
+  const handleHint = useCallback(async () => {
+    setMessages(prev => [...prev, { role: 'user', text: 'רמז', ts: ts() }]);
+    appendLog({ ...FLOW_STEPS[4], msg: 'Hint requested → sending to Groq with רמז trigger', ts: ts() });
+    await new Promise(r => setTimeout(r, 900));
+    setMessages(prev => [...prev, { role: 'agent', text: '💡 חשוב על Middleware ב-Express…', ts: ts() }]);
+  }, [appendLog]);
+
+  const handleSkip = useCallback(async () => {
+    setMessages(prev => [...prev, { role: 'user', text: 'דלג ⏭️', ts: ts() }]);
+    appendLog({ ...FLOW_STEPS[3], msg: 'Skip trigger → memory_rules.md SKIP flow activated', ts: ts() });
+    appendLog({ ...FLOW_STEPS[4], msg: 'Sending skip payload → Groq', detail: 'Will generate explanation + new question', ts: ts() });
+    await new Promise(r => setTimeout(r, 1000));
+    setMessages(prev => [...prev, {
+      role: 'agent',
+      text: 'בסדר, נעבור הלאה.\n\n**תשובה מלאה:** Rate limiting ב-Express מממשים עם `express-rate-limit`. מגדירים `windowMs` ו-`max` לפי endpoint. מומלץ גם להוסיף `slowDown` לחסימה הדרגתית לפני ה-block המלא.\n\n---\n\n**השאלה:** מה ההבדל בין SQL Injection ל-NoSQL Injection, ואיך מתגוננים מכל אחד?',
+      ts: ts(),
+    }]);
+  }, [appendLog]);
+
+  return (
+    <div className="h-screen flex flex-col overflow-hidden grid-bg" style={{ background: '#06080e' }}>
+
+      {/* Top nav */}
+      <header className="flex items-center justify-between px-5 py-2.5 border-b flex-shrink-0" style={{ borderColor: '#1a2540', background: '#090d18' }}>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full pulse" style={{ background: '#00d4a0', color: '#00d4a0' }} />
+            <span className="text-sm font-bold tracking-widest" style={{ color: '#cdd9ea' }}>AGENT//OS</span>
+            <span style={{ color: '#1a2540' }}>|</span>
+            <span className="text-xs" style={{ color: '#3a4a5c' }}>Debug Console</span>
+          </div>
+          <span className="text-[9px] px-2 py-0.5 rounded" style={{ background: '#1a2540', color: '#3a4a5c' }}>v1.0.0</span>
+        </div>
+
+        <div className="flex items-center gap-6 text-[9.5px]">
+          {[
+            { on: true,   color: '#4ade80', label: 'Groq API' },
+            { on: true,   color: '#4d9fff', label: 'llama-3.1-8b-instant' },
+            { on: hasPdf, color: '#a78bfa', label: 'PDF Context' },
+          ].map(({ on, color, label }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <Dot on={on} color={color} />
+              <span style={{ color: '#3a4a5c' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </header>
+
+      {/* Three-panel grid */}
+      <main className="flex-1 grid gap-3 p-3 overflow-hidden" style={{ gridTemplateColumns: '1fr 1.65fr 1.1fr' }}>
+        <BrainPanel active={activeFile} setActive={setActiveFile} hasPdf={hasPdf} />
+        <ChatPanel
+          messages={messages}
+          onSend={handleSend}
+          onHint={handleHint}
+          onSkip={handleSkip}
+          onUpload={handleUpload}
+          hasPdf={hasPdf}
+        />
+        <LogPanel
+          logs={logs}
+          simulating={simulating}
+          onSimulate={simulate}
+          onClear={() => setLogs([])}
+        />
+      </main>
+
+      {/* Status bar */}
+      <footer className="flex items-center justify-between px-5 py-1 border-t flex-shrink-0" style={{ borderColor: '#111928', background: '#070a10' }}>
+        <div className="flex gap-5 text-[9px]" style={{ color: '#2a3a50' }}>
+          <span>agent_config/soul.md · skills.md · memory_rules.md</span>
+          <span>tools/pdf_handler.py (pypdf)</span>
+          <span>main.py · Telegram Bot</span>
+        </div>
+        <div className="flex gap-5 text-[9px]" style={{ color: '#2a3a50' }}>
+          <span>Window: last 6 msgs</span>
+          <span>Temp: 0.6</span>
+          <span>Max tokens: 800</span>
+          <span>Model: llama-3.1-8b-instant</span>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

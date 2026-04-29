@@ -1,54 +1,49 @@
 import os
-import io
 from groq import Groq
-from pypdf import PdfReader
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters
+
+from tools.pdf_handler import extract_text_from_pdf
 
 load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 user_sessions = {}
 
-def extract_text_from_pdf(pdf_bytes):
-    reader = PdfReader(io.BytesIO(pdf_bytes))
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() + "\n"
-    return text
-
-# --- פרומפט "מנטור טכני" - דגש על עומק במקרה של חוסר ידע ---
-SYSTEM_PROMPT = """
-אתה מנטור טכני בכיר. המטרה שלך היא שהמשתמש ילמד את החומר ב-PDF בצורה מעמיקה.
-דבר בעברית מקצועית, סבלנית ומלמדת.
-
-חוקי ברזל למבנה (חובה):
-1. כל תשובה חייבת לכלול שני חלקים המופרדים על ידי קו מפריד (---).
-2. חלק ראשון - למידה והסבר:
-   - אם המשתמש צדק: אשר את תשובתו והוסף "ערך מוסף" טכני קצר (טיפ מהשטח או מקרה קצה).
-   - אם המשתמש טעה, ענה חלקית או אמר "לא יודע": אל תגיד "לא משנה". כתוב הסבר מעמיק, מפורט ומובנה על המושג. הסבר את ה'למה' ואת ה'איך'. המטרה היא שהוא יבין את הנושא ב-100% לפני שממשיכים.
-3. חלק שני - השאלה הבאה:
-   - כתוב את הכותרת **השאלה:** (מודגש) ואחריה שאלה אחת חדשה וממוקדת.
-
-חוקי רמזים:
-- אם המשתמש לוחץ על רמז: תן רק רמז דק (כיוון מחשבה). אל תיתן את התשובה.
-"""
+def get_system_prompt(pdf_text):
+    """
+    הפונקציה הזו היא ה"דבק". היא פותחת את כל קבצי הקינפוג שלנו
+    ומרכיבה מהם את ההוראות השלמות עבור ה-LLM.
+    """
+    with open('agent_config/soul.md', 'r', encoding='utf-8') as f:
+        soul = f.read()
+    with open('agent_config/skills.md', 'r', encoding='utf-8') as f:
+        skills = f.read()
+    with open('agent_config/memory_rules.md', 'r', encoding='utf-8') as f:
+        memory = f.read()
+        
+    return f"{soul}\n\n{skills}\n\n{memory}\n\n--- \nCONTEXT FROM PDF:\n{pdf_text}"
 
 def get_interview_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("רמז 💡", callback_data='hint'), InlineKeyboardButton("דלג שאלה ⏭️", callback_data='skip')],
-        [InlineKeyboardButton("סיום וציון משוקלל 📊", callback_data='summary')]
+        [InlineKeyboardButton("סיום סשן 📊", callback_data='summary')]
     ])
 
 async def ask_ai(chat_id, user_input):
     session = user_sessions[chat_id]
     session['history'].append({"role": "user", "content": user_input})
     
+    recent_history = session['history'][-6:]
+    
+    system_prompt = get_system_prompt(session['pdf_text'])
+    
     completion = client.chat.completions.create(
-        model="llama-3.3-70b-versatile", 
-        messages=[{"role": "system", "content": SYSTEM_PROMPT + f"\n\nContext from PDF:\n{session['pdf_text']}"}] + session['history'],
+        model="llama-3.1-8b-instant", 
+        messages=[{"role": "system", "content": system_prompt}] + recent_history,
         temperature=0.6,
+        max_tokens=800
     )
     
     ai_response = completion.choices[0].message.content
@@ -68,14 +63,16 @@ async def send_split_message(update: Update, text: str, show_keyboard=False):
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    await update.message.reply_text("טוען את חומר הלימוד... 📚")
+    await update.message.reply_text("טוען את המוח ואת חומר הלימוד... 🧠📚")
     try:
         file = await context.bot.get_file(update.message.document.file_id)
         pdf_bytes = await file.download_as_bytearray()
+        
+        # שימוש בכלי שיצרנו בתיקייה הנפרדת
         text = extract_text_from_pdf(pdf_bytes)
         
         user_sessions[chat_id] = {'history': [], 'pdf_text': text}
-        response = await ask_ai(chat_id, "התחל בבחינה. בצע סקירה קצרה של הנושאים, שים קו מפריד, ושאל שאלה ראשונה.")
+        response = await ask_ai(chat_id, "זהו חומר הרקע. קבל את פני המשתמש בקצרה, ציין 2-3 טכנולוגיות מרכזיות שזיהית במסמך שעליהן תבחן אותו. שים קו מפריד (---) ושאל את השאלה הטכנית הראשונה.")      
         await send_split_message(update, response, show_keyboard=True)
     except Exception as e:
         await update.message.reply_text(f"שגיאה: {str(e)}")
@@ -86,37 +83,28 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.message.chat_id
     if chat_id not in user_sessions: return
 
+    # שימו לב: אנחנו מעבירים את המילים 'רמז' או 'דלג' ישר ל-LLM,
+    # כי לימדנו אותו בקובץ memory_rules.md איך להגיב אליהן!
     if query.data == 'hint':
-        response = await ask_ai(chat_id, "תן לי רמז דק מאוד לשאלה. אל תגלה את התשובה ואל תוסיף שאלה חדשה.")
-        await query.message.reply_text(f"💡 **רמז:** {response.strip()}", parse_mode='Markdown')
+        response = await ask_ai(chat_id, "רמז")
+        await query.message.reply_text(f"💡 {response.strip()}", parse_mode='Markdown')
     elif query.data == 'skip':
-        response = await ask_ai(chat_id, "דלג על השאלה ועבור לנושא אחר. שים קו מפריד ושאל שאלה חדשה.")
+        response = await ask_ai(chat_id, "דלג")
         await send_split_message(update, response, show_keyboard=True)
     elif query.data == 'summary':
-        response = await ask_ai(chat_id, "סכם את רמת הידע שלי, תן דגשים לשיפור וציון סופי.")
+        response = await ask_ai(chat_id, "סכם את הסשן ואת רמת הידע שלי. אל תשאל שאלה חדשה.")
         await query.message.reply_text(response, parse_mode='Markdown')
         del user_sessions[chat_id]
 
 async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if chat_id not in user_sessions:
-        await update.message.reply_text("שלום! כדי להתחיל, שלח לי קובץ PDF.")
+        await update.message.reply_text("שלום! שלח PDF כדי להתחיל.")
         return
 
     await context.bot.send_chat_action(chat_id=chat_id, action='typing')
     try:
-        user_text = update.message.text
-        if update.message.voice:
-            voice_file = await context.bot.get_file(update.message.voice.file_id)
-            voice_bytes = await voice_file.download_as_bytearray()
-            transcription = client.audio.transcriptions.create(
-                file=("audio.ogg", bytes(voice_bytes)),
-                model="whisper-large-v3",
-                language="he"
-            )
-            user_text = transcription.text
-
-        response = await ask_ai(chat_id, user_text)
+        response = await ask_ai(chat_id, update.message.text)
         await send_split_message(update, response, show_keyboard=True)
     except Exception as e:
         await update.message.reply_text(f"שגיאה: {str(e)}")
@@ -126,5 +114,5 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("start", lambda u,c: u.message.reply_text("שלח PDF ונתחיל.")))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
-    app.add_handler(MessageHandler(filters.TEXT | filters.VOICE, handle_input))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input))
     app.run_polling()
