@@ -284,146 +284,355 @@ const FLOW_STEPS = [
   { type: 'response',     label: '[Response]',      icon: '✓',  color: '#4ade80', msg: 'Response received · parsing Markdown · splitting on ---', detail: 'Latency: 1.23 s · Output: 342 tok' },
 ];
 
-/* ─── Docker filesystem snapshot ─── */
+/* ─── Docker installed packages snapshot (/usr/local/lib/python3.10/site-packages) ─── */
 const DOCKER_TREE = [
-  { path: 'main.py',                              type: 'file', lang: 'py'   },
-  { path: 'requirements.txt',                     type: 'file', lang: 'txt'  },
-  { path: 'Dockerfile',                           type: 'file', lang: 'dock' },
-  { path: '.gitignore',                           type: 'file', lang: 'txt'  },
-  { path: 'agent_config/',                        type: 'dir'                },
-  { path: 'agent_config/soul.md',                 type: 'file', lang: 'md'   },
-  { path: 'agent_config/skills.md',               type: 'file', lang: 'md'   },
-  { path: 'agent_config/memory_rules.md',         type: 'file', lang: 'md'   },
-  { path: 'tools/',                               type: 'dir'                },
-  { path: 'tools/pdf_handler.py',                 type: 'file', lang: 'py'   },
-  { path: '.github/',                             type: 'dir'                },
-  { path: '.github/workflows/deploy-dashboard.yml', type: 'file', lang: 'yml' },
+  { path: 'groq/',                           type: 'dir' },
+  { path: 'groq/__init__.py',                type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'groq/_client.py',                 type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'groq/resources/',                 type: 'dir' },
+  { path: 'groq/resources/chat/completions.py', type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'pypdf/',                          type: 'dir' },
+  { path: 'pypdf/__init__.py',               type: 'file', lang: 'py', ver: '4.1.0' },
+  { path: 'pypdf/_reader.py',                type: 'file', lang: 'py', ver: '4.1.0' },
+  { path: 'telegram/',                       type: 'dir' },
+  { path: 'telegram/__init__.py',            type: 'file', lang: 'py', ver: '20.8' },
+  { path: 'dotenv/',                         type: 'dir' },
+  { path: 'dotenv/main.py',                  type: 'file', lang: 'py', ver: '1.0.1' },
 ];
 
 const DOCKER_CONTENTS = {
-  'main.py': `import os
-from groq import Groq
-from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters
+  'groq/__init__.py': `# File generated from our OpenAPI spec by Stainless.
+# groq v0.4.2 — Python SDK for the Groq API
 
-from tools.pdf_handler import extract_text_from_pdf
+from . import types
+from ._types import NoneType, Transport, ProxiesTypes
+from ._utils import file_from_path
+from ._client import (
+    Groq, Client, Stream, Timeout,
+    AsyncGroq, Transport, AsyncClient,
+    AsyncStream, RequestOptions
+)
+from ._models import BaseModel
+from ._version import __title__, __version__
+from ._exceptions import (
+    APIError, GroqError, ConflictError, NotFoundError,
+    APIStatusError, RateLimitError, APITimeoutError,
+    BadRequestError, APIConnectionError, AuthenticationError,
+    InternalServerError, PermissionDeniedError,
+    UnprocessableEntityError, APIResponseValidationError,
+)
 
-load_dotenv()
+__all__ = [
+    "types", "__version__", "__title__",
+    "Groq", "AsyncGroq", "Client", "AsyncClient",
+    "Stream", "AsyncStream", "Timeout",
+    "RequestOptions", "BaseModel",
+    "GroqError", "APIError", "RateLimitError",
+    "AuthenticationError", "APIConnectionError",
+    # ... more exceptions
+]`,
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-user_sessions = {}
+  'groq/_client.py': `# File generated from our OpenAPI spec by Stainless.
+# groq v0.4.2
 
-def get_system_prompt(pdf_text):
-    with open('agent_config/soul.md', 'r', encoding='utf-8') as f:
-        soul = f.read()
-    with open('agent_config/skills.md', 'r', encoding='utf-8') as f:
-        skills = f.read()
-    with open('agent_config/memory_rules.md', 'r', encoding='utf-8') as f:
-        memory = f.read()
-    return f"{soul}\\n\\n{skills}\\n\\n{memory}\\n\\n---\\nCONTEXT FROM PDF:\\n{pdf_text}"
+from __future__ import annotations
+import os
+from typing import Any, Union, Mapping
+import httpx
 
-async def ask_ai(chat_id, user_input):
-    session = user_sessions[chat_id]
-    session['history'].append({"role": "user", "content": user_input})
-    recent_history = session['history'][-6:]
-    system_prompt = get_system_prompt(session['pdf_text'])
-    completion = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": system_prompt}] + recent_history,
-        temperature=0.6,
-        max_tokens=800
-    )
-    ai_response = completion.choices[0].message.content
-    session['history'].append({"role": "assistant", "content": ai_response})
-    return ai_response
+from . import resources, _exceptions
+from ._base_client import SyncAPIClient, AsyncAPIClient
 
-async def handle_document(update, context):
-    chat_id = update.effective_chat.id
-    await update.message.reply_text("טוען את המוח ואת חומר הלימוד... 🧠📚")
-    file = await context.bot.get_file(update.message.document.file_id)
-    pdf_bytes = await file.download_as_bytearray()
-    text = extract_text_from_pdf(pdf_bytes)
-    user_sessions[chat_id] = {'history': [], 'pdf_text': text}
-    response = await ask_ai(chat_id, "קבל את פני המשתמש, ציין 2-3 טכנולוגיות ושאל שאלה ראשונה.")
-    await update.message.reply_text(response, parse_mode='Markdown')
+class Groq(SyncAPIClient):
+    chat: resources.Chat
+    models: resources.Models
+    api_key: str
 
-if __name__ == '__main__':
-    app = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
-    app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
-    app.run_polling()`,
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        base_url: str | httpx.URL | None = None,
+        timeout: Union[float, None] = None,
+        max_retries: int = 2,
+        http_client: httpx.Client | None = None,
+    ) -> None:
+        """Construct a new synchronous Groq client.
+        Automatically reads GROQ_API_KEY env variable if api_key not provided.
+        """
+        if api_key is None:
+            api_key = os.environ.get("GROQ_API_KEY")
+        if api_key is None:
+            raise GroqError(
+                "The api_key must be set via param or GROQ_API_KEY env variable"
+            )
+        self.api_key = api_key
 
-  'requirements.txt': `python-telegram-bot==20.8
-groq==0.4.2
-python-dotenv==1.0.1
-pypdf==4.1.0`,
+        if base_url is None:
+            base_url = "https://api.groq.com"
 
-  'Dockerfile': `FROM python:3.10-slim
+        super().__init__(
+            version=__version__,
+            base_url=base_url,
+            max_retries=max_retries,
+            timeout=timeout,
+            http_client=http_client,
+        )
+        self.chat = resources.Chat(self)
+        self.models = resources.Models(self)
 
-WORKDIR /app
+    @property
+    def auth_headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self.api_key}"}`,
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+  'groq/resources/chat/completions.py': `# File generated from our OpenAPI spec by Stainless.
+# groq v0.4.2 — This is the function your main.py calls
 
-COPY . .
+from __future__ import annotations
+from typing import Dict, List, Union, Iterable, Optional, overload
+import httpx
 
-CMD ["python", "main.py"]`,
+from ..._base_client import make_request_options
+from ...types.chat import ChatCompletion, completion_create_params
 
-  '.gitignore': `.env
-__pycache__/
-*.pyc
-*.pyo
-.DS_Store
-*.egg-info/
-.venv/
-venv/`,
+class Completions(SyncAPIResource):
 
-  'tools/pdf_handler.py': `import io
-from pypdf import PdfReader
+    def create(
+        self,
+        *,
+        messages: Iterable[completion_create_params.Message],
+        model: str,                        # e.g. "llama-3.1-8b-instant"
+        frequency_penalty: float = None,
+        max_tokens: int = None,            # 800 in your config
+        n: int = None,
+        presence_penalty: float = None,
+        response_format: dict = None,
+        seed: int = None,
+        stop: Union[str, List[str]] = None,
+        stream: bool = None,
+        temperature: float = None,         # 0.6 in your config
+        tool_choice: dict = None,
+        tools: Iterable[dict] = None,
+        top_p: float = None,
+        user: str = None,
+        timeout: float = None,
+    ) -> ChatCompletion:
+        """
+        Creates a model response for the given chat conversation.
+        This is the core call that powers your interview agent.
 
-def extract_text_from_pdf(pdf_bytes, max_chars=12000):
-    try:
+        Usage in your main.py:
+            completion = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "system", ...}] + recent_history,
+                temperature=0.6,
+                max_tokens=800
+            )
+            ai_response = completion.choices[0].message.content
+        """
+        return self._post(
+            "/openai/v1/chat/completions",
+            body={"messages": messages, "model": model, ...},
+            options=make_request_options(timeout=timeout),
+            cast_to=ChatCompletion,
+        )`,
+
+  'pypdf/__init__.py': `"""
+pypdf v4.1.0
+Free and open-source pure-python PDF library.
+Can split, merge, crop, transform PDF pages,
+and retrieve text and metadata from PDFs.
+
+https://pypdf.readthedocs.io/
+"""
+
+from ._crypt_providers import crypt_provider
+from ._encryption import PasswordType
+from ._merger import PdfMerger
+from ._page import PageObject, Transformation, mult
+from ._reader import DocumentInformation, PdfReader   # <-- you use this
+from ._version import __version__
+from ._writer import ObjectDeletionFlag, PdfWriter
+from .constants import ImageType
+from .pagerange import PageRange, parse_filename_page_ranges
+from .papersizes import PaperSize
+
+__all__ = [
+    "__version__",
+    "PdfReader",      # <-- imported in your pdf_handler.py
+    "PdfWriter",
+    "PdfMerger",
+    "PageObject",
+    "PageRange",
+    "PaperSize",
+    "DocumentInformation",
+    "PasswordType",
+    "ObjectDeletionFlag",
+    "Transformation",
+    "ImageType",
+]`,
+
+  'pypdf/_reader.py': `# Copyright (c) 2006, Mathieu Fenniak
+# pypdf v4.1.0 — PDF Reader implementation
+
+import os, re, struct, zlib
+from io import BytesIO
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from ._encryption import Encryption, PasswordType
+from ._page import PageObject, _VirtualList
+from ._utils import (
+    StrByteType, StreamType, b_,
+    read_non_whitespace, read_previous_line,
+    read_until_whitespace,
+)
+
+class PdfReader:
+    """
+    Core class for reading PDF files.
+    This is what your pdf_handler.py instantiates:
         reader = PdfReader(io.BytesIO(pdf_bytes))
-        text = ""
-        for page in reader.pages:
-            if page.extract_text():
-                text += page.extract_text() + "\\n"
-        return text[:max_chars]
-    except Exception as e:
-        return f"שגיאה בקריאת ה-PDF: {str(e)}"`,
 
-  '.github/workflows/deploy-dashboard.yml': `name: Deploy Dashboard to GitHub Pages
+    Key attributes:
+        reader.pages        -> list of PageObject
+        reader.metadata     -> document info (title, author, etc.)
+        reader.is_encrypted -> bool
 
-on:
-  push:
-    branches: [master]
-  workflow_dispatch:
+    Key method used in your code:
+        page.extract_text() -> str
+        Extracts raw text from a single page object.
+        Returns None if the page has no extractable text layer.
+    """
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+    def __init__(
+        self,
+        stream: Union[str, bytes, BytesIO],
+        strict: bool = False,
+        password: Union[None, str, bytes] = None,
+    ) -> None:
+        self.strict = strict
+        self.flattened_pages = None
+        self.resolved_objects = {}
+        self.xref_index = 0
+        # ... parse the PDF binary structure
+        self._override_encryption = False
+        self._encryption: Optional[Encryption] = None
+        if hasattr(stream, "seek"):
+            self.stream = stream
+        else:
+            self.stream = BytesIO(stream)
+        self._initialize_stream(self.stream)
+        if password is not None:
+            self.decrypt(password)
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: \${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v4
-        with:
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-      - id: deployment
-        uses: actions/deploy-pages@v4`,
+    @property
+    def pages(self) -> _VirtualList:
+        """Returns a list-like object of all PageObject instances."""
+        return _VirtualList(self._get_num_pages(), self._get_page)`,
 
-  'agent_config/soul.md':         BRAIN_FILES['soul.md'],
-  'agent_config/skills.md':       BRAIN_FILES['skills.md'],
-  'agent_config/memory_rules.md': BRAIN_FILES['memory_rules.md'],
+  'telegram/__init__.py': `# python-telegram-bot v20.8
+# Python interface to the Telegram Bot API
+# Copyright (C) 2015-2023 — LGPL License
+#
+# What you use from this package in main.py:
+#   from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+#   from telegram.ext import ApplicationBuilder, ContextTypes,
+#                            CommandHandler, MessageHandler,
+#                            CallbackQueryHandler, filters
+
+__author__ = "devs@python-telegram-bot.org"
+
+# Core objects exposed:
+# Update        - represents any incoming Telegram update (message, callback, etc.)
+# Bot           - the main bot interface for sending messages
+# Message       - a Telegram message object
+# InlineKeyboardButton - a single button in an inline keyboard
+# InlineKeyboardMarkup - a grid of InlineKeyboardButtons
+# Document      - represents a file sent as document (your PDF)
+# CallbackQuery - fired when user clicks an inline button (רמז/דלג)
+
+# How your bot flow works:
+# 1. User sends PDF → filters.Document.PDF → handle_document()
+# 2. User clicks "רמז" → CallbackQueryHandler → handle_callback()
+# 3. User sends text → filters.TEXT → handle_input()
+# 4. Bot replies via update.effective_message.reply_text()`,
+
+  'dotenv/main.py': `# python-dotenv v1.0.1
+# Reads key=value pairs from a .env file
+# and sets them as environment variables
+
+import io, logging, os, pathlib
+from collections import OrderedDict
+from typing import Dict, Iterable, Iterator, Optional, Union
+
+from .parser import Binding, parse_stream
+from .variables import parse_variables
+
+class DotEnv:
+    """
+    Reads a .env file and loads variables into os.environ.
+
+    Your .env file contains:
+        GROQ_API_KEY=gsk_xxxxxxxxxxxxx
+        TELEGRAM_TOKEN=123456:ABC-xxxxx
+
+    Usage in your main.py:
+        from dotenv import load_dotenv
+        load_dotenv()   # reads .env from current directory
+
+    After load_dotenv():
+        os.getenv("GROQ_API_KEY")    -> "gsk_xxxxx..."
+        os.getenv("TELEGRAM_TOKEN")  -> "123456:ABC..."
+
+    Security note:
+        The .env file is listed in .gitignore so it is NEVER
+        committed to GitHub. Only exists locally and in Docker.
+    """
+
+    def __init__(
+        self,
+        dotenv_path: Optional[str] = None,
+        stream=None,
+        verbose: bool = False,
+        encoding: Optional[str] = None,
+        interpolate: bool = True,
+        override: bool = True,
+    ) -> None:
+        self.dotenv_path = dotenv_path
+        self.stream = stream
+        self._dict: Optional[Dict] = None
+        self.verbose = verbose
+        self.encoding = encoding
+        self.interpolate = interpolate
+        self.override = override
+
+    def dict(self) -> Dict[str, Optional[str]]:
+        """Parse the .env file and return key-value pairs as dict."""
+        if self._dict:
+            return self._dict
+        raw_values = self.parse()
+        # resolve variable interpolation: KEY=${OTHER_KEY}
+        if self.interpolate:
+            self._dict = resolve_variables(raw_values, override=self.override)
+        else:
+            self._dict = OrderedDict(raw_values)
+        return self._dict
+
+def load_dotenv(
+    dotenv_path=None,
+    stream=None,
+    verbose=False,
+    override=True,
+    interpolate=True,
+    encoding="utf-8",
+) -> bool:
+    """Load .env file into os.environ. Returns True if file was found."""
+    f = dotenv_path or find_dotenv()
+    return DotEnv(
+        f, stream=stream, verbose=verbose,
+        override=override, interpolate=interpolate,
+        encoding=encoding,
+    ).set_as_environment_variables()`,
 };
 
 const LANG_COLOR = { py: '#4d9fff', md: '#a78bfa', yml: '#60d4b0', dock: '#2496ed', txt: '#7a8fa6' };
@@ -477,15 +686,27 @@ const PanelHead = ({ icon, title, badge, right }) => (
 
 /* ─── file role descriptions ─── */
 const FILE_ROLES = {
-  'main.py':                              { role: 'Orchestrator', desc: 'נקודת הכניסה הראשית. מחבר בין כל החלקים: מקבל הודעות מ-Telegram, קורא את קבצי ה-config, מפעיל את pdf_handler, ושולח הכל ל-Groq API.' },
-  'tools/pdf_handler.py':                 { role: 'Tool',         desc: 'כלי מבודד אחד ויחיד. אחראי רק על חילוץ טקסט מ-PDF עם pypdf. מוגבל ל-12,000 תווים כדי לא לחרוג ממכסת הטוקנים.' },
-  'agent_config/soul.md':                 { role: 'Identity',     desc: 'ה"נשמה" של הסוכן — מגדיר מי הוא, איך הוא מדבר, ומה האג\'נדה שלו. נקרא בכל קריאה ל-API ומוזרק כ-system prompt.' },
-  'agent_config/skills.md':              { role: 'Logic',         desc: 'ה"מיומנויות" — מגדיר בדיוק את זרימת העבודה: שלב הערכה, מפריד, שאלה חדשה. הסוכן חייב לעקוב אחרי הפורמט הזה בדיוק.' },
-  'agent_config/memory_rules.md':        { role: 'Memory',        desc: 'חוקי הזיכרון — מגדיר איך לטפל בהיסטוריה (חלון של 6 הודעות), ואיך להגיב ל-triggers מיוחדים: רמז ודלג.' },
-  'Dockerfile':                           { role: 'Container',    desc: 'מגדיר את סביבת הריצה של הסוכן. בונה image עם Python 3.10-slim, מתקין תלויות, ומעתיק את כל הפרויקט ל-/app.' },
-  'requirements.txt':                    { role: 'Dependencies',  desc: 'רשימת הספריות: python-telegram-bot לבוט, groq ל-API, python-dotenv למשתני סביבה, pypdf לחילוץ PDF.' },
-  '.gitignore':                           { role: 'Config',       desc: 'מגדיר מה לא לעלות ל-GitHub. הכי חשוב: .env עם המפתחות הסודיים לא ייכנס ל-repo בשום מצב.' },
-  '.github/workflows/deploy-dashboard.yml': { role: 'CI/CD',     desc: 'GitHub Actions — בכל push ל-master, בונה ומפרסם אוטומטית את dashboard.html ל-GitHub Pages.' },
+  'groq/__init__.py':
+    { role: 'groq SDK — Entry Point', ver: '0.4.2',
+      desc: 'נקודת הכניסה לספריית groq. מייצאת את כל מה שצריך: Groq (client), RateLimitError, AuthenticationError וכו׳. זה מה שקורה כש-main.py כותב: from groq import Groq' },
+  'groq/_client.py':
+    { role: 'groq SDK — HTTP Client', ver: '0.4.2',
+      desc: 'הלב של ה-SDK. מגדיר את class Groq שמחזיק את ה-api_key ומתחבר ל-https://api.groq.com. קורא אוטומטית את משתנה הסביבה GROQ_API_KEY אם לא הועבר ישירות.' },
+  'groq/resources/chat/completions.py':
+    { role: 'groq SDK — Chat API', ver: '0.4.2',
+      desc: 'הפונקציה שה-main.py קורא בכל תור: client.chat.completions.create(). מקבלת messages, model, temperature, max_tokens — ושולחת POST ל-/openai/v1/chat/completions.' },
+  'pypdf/__init__.py':
+    { role: 'pypdf — Entry Point', ver: '4.1.0',
+      desc: 'נקודת הכניסה לספריית pypdf. מייצאת PdfReader שמשמש את pdf_handler.py. ספרייה כתובה ב-Python טהור — לא צריך תלויות חיצוניות כמו poppler.' },
+  'pypdf/_reader.py':
+    { role: 'pypdf — PDF Parser', ver: '4.1.0',
+      desc: 'הקלאס PdfReader שמפענח את מבנה ה-PDF הבינארי. reader.pages נותן רשימת עמודים, page.extract_text() מחלץ טקסט. זה הקוד שרץ כשמשתמש שולח CV.' },
+  'telegram/__init__.py':
+    { role: 'python-telegram-bot', ver: '20.8',
+      desc: 'ה-wrapper ל-Telegram Bot API. מספק Update (כל הודעה נכנסת), InlineKeyboardButton ו-InlineKeyboardMarkup (כפתורי רמז/דלג), ApplicationBuilder להרמת ה-polling loop.' },
+  'dotenv/main.py':
+    { role: 'python-dotenv', ver: '1.0.1',
+      desc: 'קורא את קובץ ה-.env ומעלה את GROQ_API_KEY ו-TELEGRAM_TOKEN ל-os.environ. ה-.env לא עולה ל-GitHub (מוגן ע"י .gitignore) — קיים רק מקומית ובתוך Docker.' },
 };
 
 /* ─── LEFT: Brain Panel ─── */
@@ -544,7 +765,7 @@ const BrainPanel = ({ active, setActive, hasPdf }) => {
         <div className="flex flex-1 overflow-hidden">
 
           {/* File tree */}
-          <div className="overflow-y-auto border-r py-2 flex-shrink-0" style={{ width: 140, borderColor: '#1a2540', background: '#090d18' }}>
+          <div className="overflow-y-auto border-r py-2 flex-shrink-0" style={{ width: 158, borderColor: '#1a2540', background: '#090d18' }}>
             {DOCKER_TREE.map(f => {
               const isDir  = f.type === 'dir';
               const isSel  = f.path === dockerFile;
@@ -578,14 +799,20 @@ const BrainPanel = ({ active, setActive, hasPdf }) => {
           {/* File content + role badge */}
           <div className="flex flex-col flex-1 overflow-hidden">
             {/* Role badge */}
-            <div className="flex items-center gap-2 px-3 py-1.5 border-b flex-shrink-0" style={{ borderColor: '#1a2540', background: '#0b0f1a' }}>
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b flex-shrink-0 flex-wrap" style={{ borderColor: '#1a2540', background: '#0b0f1a' }}>
               {meta.role && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded font-bold"
+                <span className="text-[9px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
                   style={{ background: (LANG_COLOR[lang] || '#3a4a5c') + '22', color: LANG_COLOR[lang] || '#3a4a5c' }}>
                   {meta.role}
                 </span>
               )}
-              <span className="text-[9px] truncate" style={{ color: '#3a4a5c' }}>/app/{dockerFile}</span>
+              {meta.ver && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded flex-shrink-0"
+                  style={{ background: '#1a2540', color: '#3a4a5c' }}>
+                  v{meta.ver}
+                </span>
+              )}
+              <span className="text-[9px] truncate" style={{ color: '#2a3a50' }}>site-packages/{dockerFile}</span>
             </div>
             {/* Role description */}
             {meta.desc && (
@@ -964,7 +1191,7 @@ const App = () => {
       </header>
 
       {/* Three-panel grid */}
-      <main className="app-main flex-1 grid gap-3 p-3 overflow-hidden" style={{ gridTemplateColumns: '1fr 1.65fr 1.1fr' }}>
+      <main className="app-main flex-1 grid gap-3 p-3 overflow-hidden" style={{ gridTemplateColumns: '1.9fr 1.15fr 0.85fr' }}>
         <BrainPanel active={activeFile} setActive={setActiveFile} hasPdf={hasPdf} />
         <ChatPanel
           messages={messages}
