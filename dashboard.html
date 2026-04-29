@@ -126,6 +126,39 @@
       border-color: #00d4a0;
       box-shadow: 0 0 0 1px #00d4a020;
     }
+
+    /* ── Responsive: mobile portrait ── */
+    @media (max-width: 767px) {
+      .app-root {
+        height: auto !important;
+        min-height: 100dvh;
+        overflow-y: auto !important;
+      }
+      .app-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 14px;
+      }
+      .app-header-status { display: none; }
+      .app-main {
+        grid-template-columns: 1fr !important;
+        overflow: visible !important;
+        height: auto !important;
+        flex: none !important;
+      }
+      .panel {
+        height: auto !important;
+        overflow: visible !important;
+      }
+      .panel-chat  { min-height: 520px; order: 1; }
+      .panel-log   { min-height: 420px; order: 2; }
+      .panel-brain { min-height: 380px; order: 3; }
+      /* make inner scrollable areas fixed-height on mobile */
+      .panel-chat  .msg-scroll { max-height: 320px; overflow-y: auto; }
+      .panel-log   .log-scroll { max-height: 260px; overflow-y: auto; }
+      .panel-brain .file-scroll { max-height: 200px; overflow-y: auto; }
+      .app-footer { display: none; }
+    }
   </style>
 </head>
 
@@ -308,7 +341,7 @@ const BrainPanel = ({ active, setActive, hasPdf }) => {
   ];
 
   return (
-    <div className="panel flex flex-col h-full">
+    <div className="panel panel-brain flex flex-col h-full">
       <PanelHead
         icon={ICONS.brain}
         title="AGENT BRAIN"
@@ -338,7 +371,7 @@ const BrainPanel = ({ active, setActive, hasPdf }) => {
       </div>
 
       {/* File content */}
-      <div className="flex-1 overflow-y-auto p-4 text-[10.5px] leading-relaxed" style={{ color: '#7a8fa6' }}>
+      <div className="file-scroll flex-1 overflow-y-auto p-4 text-[10.5px] leading-relaxed" style={{ color: '#7a8fa6' }}>
         <pre className="whitespace-pre-wrap break-words">{BRAIN_FILES[active]}</pre>
       </div>
 
@@ -389,7 +422,7 @@ const ChatPanel = ({ messages, onSend, onHint, onSkip, onUpload, hasPdf }) => {
   };
 
   return (
-    <div className="panel flex flex-col h-full">
+    <div className="panel panel-chat flex flex-col h-full">
       <PanelHead
         icon={ICONS.terminal}
         title="USER INTERACTION"
@@ -403,7 +436,7 @@ const ChatPanel = ({ messages, onSend, onHint, onSkip, onUpload, hasPdf }) => {
       />
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div className="msg-scroll flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.map((m, i) => {
           const s = roleStyle[m.role] || roleStyle.system;
           return (
@@ -518,7 +551,7 @@ const LogPanel = ({ logs, simulating, onSimulate, onClear }) => {
   const latency  = logs.some(l => l.type === 'response') ? '1.23 s' : '—';
 
   return (
-    <div className="panel flex flex-col h-full">
+    <div className="panel panel-log flex flex-col h-full">
       <PanelHead
         icon={ICONS.zap}
         title="EXECUTION TRACE"
@@ -552,7 +585,7 @@ const LogPanel = ({ logs, simulating, onSimulate, onClear }) => {
       )}
 
       {/* Log entries */}
-      <div className="flex-1 overflow-y-auto px-4 pt-3">
+      <div className="log-scroll flex-1 overflow-y-auto px-4 pt-3">
         {logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center select-none">
             <div className="text-5xl mb-3" style={{ opacity: .1 }}>◈</div>
@@ -674,10 +707,10 @@ const App = () => {
   }, [appendLog]);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden grid-bg" style={{ background: '#06080e' }}>
+    <div className="app-root h-screen flex flex-col overflow-hidden grid-bg" style={{ background: '#06080e' }}>
 
       {/* Top nav */}
-      <header className="flex items-center justify-between px-5 py-2.5 border-b flex-shrink-0" style={{ borderColor: '#1a2540', background: '#090d18' }}>
+      <header className="app-header flex items-center justify-between px-5 py-2.5 border-b flex-shrink-0" style={{ borderColor: '#1a2540', background: '#090d18' }}>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full pulse" style={{ background: '#00d4a0', color: '#00d4a0' }} />
@@ -688,7 +721,7 @@ const App = () => {
           <span className="text-[9px] px-2 py-0.5 rounded" style={{ background: '#1a2540', color: '#3a4a5c' }}>v1.0.0</span>
         </div>
 
-        <div className="flex items-center gap-6 text-[9.5px]">
+        <div className="app-header-status flex items-center gap-6 text-[9.5px]">
           {[
             { on: true,   color: '#4ade80', label: 'Groq API' },
             { on: true,   color: '#4d9fff', label: 'llama-3.1-8b-instant' },
@@ -703,7 +736,7 @@ const App = () => {
       </header>
 
       {/* Three-panel grid */}
-      <main className="flex-1 grid gap-3 p-3 overflow-hidden" style={{ gridTemplateColumns: '1fr 1.65fr 1.1fr' }}>
+      <main className="app-main flex-1 grid gap-3 p-3 overflow-hidden" style={{ gridTemplateColumns: '1fr 1.65fr 1.1fr' }}>
         <BrainPanel active={activeFile} setActive={setActiveFile} hasPdf={hasPdf} />
         <ChatPanel
           messages={messages}
