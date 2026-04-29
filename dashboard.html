@@ -127,42 +127,40 @@
       box-shadow: 0 0 0 1px #00d4a020;
     }
 
-    /* ── Responsive: mobile portrait ── */
+    /* ── Responsive: mobile ── */
     @media (max-width: 767px) {
+      body {
+        height: auto !important;
+        overflow-y: auto !important;
+      }
+      /* page scrolls between panels */
       .app-root {
         height: auto !important;
         min-height: 100dvh;
         overflow-y: auto !important;
+        overflow-x: hidden;
       }
-      .app-header {
-        flex-wrap: wrap;
-        gap: 8px;
-        padding: 10px 14px;
-      }
+      /* header: compact, hide status dots */
+      .app-header { padding: 10px 14px; }
       .app-header-status { display: none; }
+      /* grid → single column */
       .app-main {
         grid-template-columns: 1fr !important;
         overflow: visible !important;
-        height: auto !important;
         flex: none !important;
-      }
-      .panel {
         height: auto !important;
-        overflow: visible !important;
       }
-      .panel-chat  { min-height: 520px; order: 1; }
-      .panel-log   { min-height: 420px; order: 2; }
-      .panel-brain { min-height: 380px; order: 3; }
-      /* make inner scrollable areas fixed-height on mobile */
-      .panel-chat  .msg-scroll { max-height: 320px; overflow-y: auto; }
-      .panel-log   .log-scroll { max-height: 260px; overflow-y: auto; }
-      .panel-brain .file-scroll { max-height: 200px; overflow-y: auto; }
+      /* each panel: fixed dvh so internal scroll works */
+      .panel-chat  { height: 88dvh !important; order: 1; }
+      .panel-log   { height: 72dvh !important; order: 2; }
+      .panel-brain { height: 66dvh !important; order: 3; }
+      /* footer: hidden on mobile */
       .app-footer { display: none; }
     }
   </style>
 </head>
 
-<body class="h-screen overflow-hidden">
+<body class="h-screen overflow-hidden" style="overscroll-behavior: none;">
 <div id="root"></div>
 
 <script type="text/babel">
