@@ -286,51 +286,186 @@ const FLOW_STEPS = [
 
 /* ─── Docker installed packages snapshot (/usr/local/lib/python3.10/site-packages) ─── */
 const DOCKER_TREE = [
-  { path: 'groq/',                           type: 'dir' },
-  { path: 'groq/__init__.py',                type: 'file', lang: 'py', ver: '0.4.2' },
-  { path: 'groq/_client.py',                 type: 'file', lang: 'py', ver: '0.4.2' },
-  { path: 'groq/resources/',                 type: 'dir' },
-  { path: 'groq/resources/chat/completions.py', type: 'file', lang: 'py', ver: '0.4.2' },
-  { path: 'pypdf/',                          type: 'dir' },
-  { path: 'pypdf/__init__.py',               type: 'file', lang: 'py', ver: '4.1.0' },
-  { path: 'pypdf/_reader.py',                type: 'file', lang: 'py', ver: '4.1.0' },
-  { path: 'telegram/',                       type: 'dir' },
-  { path: 'telegram/__init__.py',            type: 'file', lang: 'py', ver: '20.8' },
-  { path: 'dotenv/',                         type: 'dir' },
-  { path: 'dotenv/main.py',                  type: 'file', lang: 'py', ver: '1.0.1' },
+  { path: 'groq/',                                    type: 'dir' },
+  { path: 'groq/_version.py',                         type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'groq/_client.py',                          type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'groq/_exceptions.py',                      type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'groq/_streaming.py',                       type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'groq/resources/',                          type: 'dir' },
+  { path: 'groq/resources/chat/completions.py',       type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'groq/types/',                              type: 'dir' },
+  { path: 'groq/types/chat/chat_completion.py',       type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'groq/types/chat/completion_create_params.py', type: 'file', lang: 'py', ver: '0.4.2' },
+  { path: 'pypdf/',                                   type: 'dir' },
+  { path: 'pypdf/_reader.py',                         type: 'file', lang: 'py', ver: '4.1.0' },
+  { path: 'pypdf/errors.py',                          type: 'file', lang: 'py', ver: '4.1.0' },
+  { path: 'pypdf/filters.py',                         type: 'file', lang: 'py', ver: '4.1.0' },
+  { path: 'pypdf/constants.py',                       type: 'file', lang: 'py', ver: '4.1.0' },
+  { path: 'telegram/',                                type: 'dir' },
+  { path: 'telegram/error.py',                        type: 'file', lang: 'py', ver: '20.8' },
+  { path: 'telegram/_update.py',                      type: 'file', lang: 'py', ver: '20.8' },
+  { path: 'telegram/_callbackquery.py',               type: 'file', lang: 'py', ver: '20.8' },
+  { path: 'telegram/_inline/',                        type: 'dir' },
+  { path: 'telegram/_inline/inlinekeyboardbutton.py', type: 'file', lang: 'py', ver: '20.8' },
+  { path: 'telegram/_inline/inlinekeyboardmarkup.py', type: 'file', lang: 'py', ver: '20.8' },
+  { path: 'telegram/ext/',                            type: 'dir' },
+  { path: 'telegram/ext/filters.py',                  type: 'file', lang: 'py', ver: '20.8' },
+  { path: 'telegram/ext/_handlers/',                  type: 'dir' },
+  { path: 'telegram/ext/_handlers/messagehandler.py', type: 'file', lang: 'py', ver: '20.8' },
+  { path: 'telegram/ext/_handlers/callbackqueryhandler.py', type: 'file', lang: 'py', ver: '20.8' },
+  { path: 'dotenv/',                                  type: 'dir' },
+  { path: 'dotenv/main.py',                           type: 'file', lang: 'py', ver: '1.0.1' },
+  { path: 'dotenv/parser.py',                         type: 'file', lang: 'py', ver: '1.0.1' },
+  { path: 'dotenv/variables.py',                      type: 'file', lang: 'py', ver: '1.0.1' },
 ];
 
 const DOCKER_CONTENTS = {
-  'groq/__init__.py': `# File generated from our OpenAPI spec by Stainless.
-# groq v0.4.2 — Python SDK for the Groq API
+  'groq/_version.py': `# File generated from our OpenAPI spec by Stainless.
 
-from . import types
-from ._types import NoneType, Transport, ProxiesTypes
-from ._utils import file_from_path
-from ._client import (
-    Groq, Client, Stream, Timeout,
-    AsyncGroq, Transport, AsyncClient,
-    AsyncStream, RequestOptions
-)
-from ._models import BaseModel
-from ._version import __title__, __version__
-from ._exceptions import (
-    APIError, GroqError, ConflictError, NotFoundError,
-    APIStatusError, RateLimitError, APITimeoutError,
-    BadRequestError, APIConnectionError, AuthenticationError,
-    InternalServerError, PermissionDeniedError,
-    UnprocessableEntityError, APIResponseValidationError,
-)
+__title__ = "groq"
+__version__ = "0.4.2"  # x-release-please-version`,
 
-__all__ = [
-    "types", "__version__", "__title__",
-    "Groq", "AsyncGroq", "Client", "AsyncClient",
-    "Stream", "AsyncStream", "Timeout",
-    "RequestOptions", "BaseModel",
-    "GroqError", "APIError", "RateLimitError",
-    "AuthenticationError", "APIConnectionError",
-    # ... more exceptions
-]`,
+  'groq/_exceptions.py': `# File generated from our OpenAPI spec by Stainless.
+from __future__ import annotations
+import httpx
+
+class GroqError(Exception):
+    pass
+
+class APIError(GroqError):
+    message: str
+    request: httpx.Request
+    body: object | None
+
+    def __init__(self, message: str, request: httpx.Request, *, body: object | None) -> None:
+        super().__init__(message)
+        self.request = request
+        self.message = message
+        self.body = body
+
+class APIStatusError(APIError):
+    """Raised when an API response has a status code of 4xx or 5xx."""
+    response: httpx.Response
+    status_code: int
+
+class BadRequestError(APIStatusError):       # 400
+    status_code: int = 400
+
+class AuthenticationError(APIStatusError):   # 401 — wrong GROQ_API_KEY
+    status_code: int = 401
+
+class RateLimitError(APIStatusError):        # 429 — too many requests
+    status_code: int = 429
+
+class InternalServerError(APIStatusError):   # >=500
+    pass`,
+
+  'groq/_streaming.py': `# groq v0.4.2 — SSE streaming support
+from __future__ import annotations
+import json
+from typing import Generic, TypeVar, Iterator
+import httpx
+
+_T = TypeVar("_T")
+
+class Stream(Generic[_T]):
+    """Iterates over a synchronous streaming response.
+    Used when stream=True in client.chat.completions.create().
+
+    Example (NOT used in your project — your project uses blocking calls):
+        stream = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[...],
+            stream=True,
+        )
+        for chunk in stream:
+            print(chunk.choices[0].delta.content, end="")
+    """
+    response: httpx.Response
+
+    def __init__(self, *, cast_to, response, client) -> None:
+        self.response = response
+        self._cast_to = cast_to
+        self._client = client
+        self._iterator = self.__stream__()
+
+    def __next__(self) -> _T:
+        return self._iterator.__next__()
+
+    def __iter__(self) -> Iterator[_T]:
+        for item in self._iterator:
+            yield item
+
+class ServerSentEvent:
+    """A single SSE chunk from the streaming API."""
+    def __init__(self, *, event=None, data="", id=None, retry=None):
+        self.event = event
+        self.data = data
+        self.id = id
+        self.retry = retry
+
+    def json(self):
+        return json.loads(self.data)`,
+
+  'groq/types/chat/chat_completion.py': `# File generated from our OpenAPI spec by Stainless.
+# groq v0.4.2
+# This is the RETURN TYPE of client.chat.completions.create()
+# In your main.py: completion.choices[0].message.content
+
+from typing import List, Optional
+from ..._models import BaseModel
+
+class ChoiceMessage(BaseModel):
+    content: str        # <-- the actual AI response text
+    role: str           # always "assistant"
+
+class Choice(BaseModel):
+    finish_reason: str  # "stop", "length", "tool_calls"
+    index: int
+    message: ChoiceMessage
+
+class Usage(BaseModel):
+    completion_tokens: int   # tokens generated by the model
+    prompt_tokens: int       # tokens in your system prompt + history
+    total_tokens: int        # sum of above
+
+class ChatCompletion(BaseModel):
+    id: str
+    choices: List[Choice]    # usually length 1
+    created: int             # Unix timestamp
+    model: str               # e.g. "llama-3.1-8b-instant"
+    object: str              # "chat.completion"
+    usage: Optional[Usage]   # token counts
+
+# How your main.py uses this:
+#   ai_response = completion.choices[0].message.content`,
+
+  'groq/types/chat/completion_create_params.py': `# File generated from our OpenAPI spec by Stainless.
+# groq v0.4.2
+# These are the PARAMETERS accepted by client.chat.completions.create()
+
+from typing import Dict, List, Union, Iterable, Optional
+from typing_extensions import Required, TypedDict
+
+class CompletionCreateParams(TypedDict, total=False):
+    messages: Required[Iterable[Message]]  # required
+    model:    Required[str]                # required, e.g. "llama-3.1-8b-instant"
+
+    frequency_penalty: float   # -2.0 to 2.0, penalizes repetition
+    logit_bias: Dict[str, int] # adjust token probabilities
+    max_tokens: int            # 800 in your config
+    n: int                     # number of completions (default: 1)
+    presence_penalty: float    # -2.0 to 2.0, encourages new topics
+    seed: int                  # for reproducible outputs
+    stop: Union[Optional[str], List[str], None]  # stop sequences
+    stream: bool               # enable SSE streaming
+    temperature: float         # 0.6 in your config (0=deterministic, 2=random)
+    top_p: float               # nucleus sampling threshold
+    user: str                  # end-user identifier
+
+class Message(TypedDict, total=False):
+    content: Required[str]    # the message text
+    role: Required[str]       # "system" | "user" | "assistant"`,
 
   'groq/_client.py': `# File generated from our OpenAPI spec by Stainless.
 # groq v0.4.2
@@ -437,41 +572,6 @@ class Completions(SyncAPIResource):
             cast_to=ChatCompletion,
         )`,
 
-  'pypdf/__init__.py': `"""
-pypdf v4.1.0
-Free and open-source pure-python PDF library.
-Can split, merge, crop, transform PDF pages,
-and retrieve text and metadata from PDFs.
-
-https://pypdf.readthedocs.io/
-"""
-
-from ._crypt_providers import crypt_provider
-from ._encryption import PasswordType
-from ._merger import PdfMerger
-from ._page import PageObject, Transformation, mult
-from ._reader import DocumentInformation, PdfReader   # <-- you use this
-from ._version import __version__
-from ._writer import ObjectDeletionFlag, PdfWriter
-from .constants import ImageType
-from .pagerange import PageRange, parse_filename_page_ranges
-from .papersizes import PaperSize
-
-__all__ = [
-    "__version__",
-    "PdfReader",      # <-- imported in your pdf_handler.py
-    "PdfWriter",
-    "PdfMerger",
-    "PageObject",
-    "PageRange",
-    "PaperSize",
-    "DocumentInformation",
-    "PasswordType",
-    "ObjectDeletionFlag",
-    "Transformation",
-    "ImageType",
-]`,
-
   'pypdf/_reader.py': `# Copyright (c) 2006, Mathieu Fenniak
 # pypdf v4.1.0 — PDF Reader implementation
 
@@ -514,7 +614,6 @@ class PdfReader:
         self.flattened_pages = None
         self.resolved_objects = {}
         self.xref_index = 0
-        # ... parse the PDF binary structure
         self._override_encryption = False
         self._encryption: Optional[Encryption] = None
         if hasattr(stream, "seek"):
@@ -530,32 +629,757 @@ class PdfReader:
         """Returns a list-like object of all PageObject instances."""
         return _VirtualList(self._get_num_pages(), self._get_page)`,
 
-  'telegram/__init__.py': `# python-telegram-bot v20.8
-# Python interface to the Telegram Bot API
-# Copyright (C) 2015-2023 — LGPL License
-#
-# What you use from this package in main.py:
-#   from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-#   from telegram.ext import ApplicationBuilder, ContextTypes,
-#                            CommandHandler, MessageHandler,
-#                            CallbackQueryHandler, filters
+  'pypdf/errors.py': `"""
+All errors/exceptions pypdf raises and all of the warnings it uses.
+pypdf v4.1.0
+"""
 
-__author__ = "devs@python-telegram-bot.org"
 
-# Core objects exposed:
-# Update        - represents any incoming Telegram update (message, callback, etc.)
-# Bot           - the main bot interface for sending messages
-# Message       - a Telegram message object
-# InlineKeyboardButton - a single button in an inline keyboard
-# InlineKeyboardMarkup - a grid of InlineKeyboardButtons
-# Document      - represents a file sent as document (your PDF)
-# CallbackQuery - fired when user clicks an inline button (רמז/דלג)
+class DeprecationError(Exception):
+    """Raised when a deprecated feature is used."""
 
-# How your bot flow works:
-# 1. User sends PDF → filters.Document.PDF → handle_document()
-# 2. User clicks "רמז" → CallbackQueryHandler → handle_callback()
-# 3. User sends text → filters.TEXT → handle_input()
-# 4. Bot replies via update.effective_message.reply_text()`,
+
+class DependencyError(Exception):
+    """Raised when a required dependency cannot be imported."""
+
+
+class PyPdfError(Exception):
+    """Base class for all exceptions raised by PyPDF."""
+
+
+class PdfReadError(PyPdfError):
+    """Raised when there is an issue reading a PDF file."""
+
+
+class PageSizeNotDefinedError(PyPdfError):
+    """Raised when the page size of a PDF document is not defined."""
+
+
+class PdfReadWarning(UserWarning):
+    """Issued when there is a potential issue reading a PDF file."""
+
+
+class PdfStreamError(PdfReadError):
+    """Raised when there is an issue reading the stream of data in a PDF file."""
+
+
+class ParseError(PyPdfError):
+    """Raised when there is an issue parsing the PDF structure."""
+
+
+class FileNotDecryptedError(PdfReadError):
+    """Raised when an encrypted PDF has not been successfully decrypted."""
+
+
+class WrongPasswordError(FileNotDecryptedError):
+    """Raised when the wrong password is used to decrypt an encrypted PDF."""
+
+
+class EmptyFileError(PdfReadError):
+    """Raised when a PDF file is empty or has no content."""
+
+
+STREAM_TRUNCATED_PREMATURELY = "Stream has ended unexpectedly"`,
+
+  'pypdf/filters.py': `# Copyright (c) 2006, Mathieu Fenniak
+# pypdf v4.1.0 — PDF stream filter decoders
+# See TABLE H.1: Abbreviations for standard filter names
+
+import math, struct, zlib
+from io import BytesIO
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
+
+from .errors import DeprecationError, PdfReadError, PdfStreamError
+from .constants import (
+    CcittFaxDecodeParameters as CCITT,
+    ColorSpaces,
+    FilterTypeAbbreviations as FTA,
+    FilterTypes as FT,
+)
+
+
+def decompress(data: bytes) -> bytes:
+    """
+    Decompress the given data using zlib.
+    Falls back to decompressobj with larger window on zlib.error.
+    Used internally when decoding FlateDecode PDF streams.
+    """
+    try:
+        return zlib.decompress(data)
+    except zlib.error:
+        d = zlib.decompressobj(zlib.MAX_WBITS | 32)
+        result_str = b""
+        for b in [data[i : i + 1] for i in range(len(data))]:
+            try:
+                result_str += d.decompress(b)
+            except zlib.error:
+                pass
+        return result_str
+
+
+class FlateDecode:
+    """Handles /FlateDecode (zlib/deflate compressed PDF streams)."""
+
+    @staticmethod
+    def decode(data: bytes, decode_parms=None, **kwargs) -> bytes:
+        """Decompress FlateDecode stream data."""
+        ...
+
+    @staticmethod
+    def encode(data: bytes, level: int = -1) -> bytes:
+        """Compress data with zlib for embedding in PDF."""
+        return zlib.compress(data, level)
+
+
+class ASCIIHexDecode:
+    """Decodes /ASCIIHexDecode streams (hex-encoded bytes)."""
+
+    @staticmethod
+    def decode(data: bytes, **kwargs) -> bytes:
+        retval = b""
+        for i in range(0, len(data), 2):
+            retval += bytes.fromhex(data[i : i + 2].decode("utf-8"))
+        return retval
+
+
+class ASCII85Decode:
+    """Decodes /ASCII85Decode streams (base-85 encoded bytes)."""
+
+    @staticmethod
+    def decode(data: bytes, **kwargs) -> bytes:
+        ...
+
+
+class LZWDecode:
+    """Decodes /LZWDecode streams (Lempel-Ziv-Welch compressed)."""
+
+    @staticmethod
+    def decode(data: bytes, **kwargs) -> bytes:
+        ...`,
+
+  'pypdf/constants.py': `"""
+PDF specification constants for pypdf v4.1.0.
+See Portable Document Format Reference Manual, 1993.
+See PDF Reference, sixth edition, Version 1.7, 2006.
+"""
+
+from enum import IntFlag, auto
+from typing import Dict, Tuple
+
+
+class Core:
+    """Keywords that don't quite belong anywhere else."""
+    OUTLINES = "/Outlines"
+    THREADS  = "/Threads"
+    PAGE     = "/Page"
+    PAGES    = "/Pages"
+    CATALOG  = "/Catalog"
+
+
+class TrailerKeys:
+    ROOT    = "/Root"
+    ENCRYPT = "/Encrypt"
+    ID      = "/ID"
+    INFO    = "/Info"
+    SIZE    = "/Size"
+
+
+class EncryptionDictAttributes:
+    """Additional encryption dictionary entries for the standard security handler."""
+    R                = "/R"
+    O                = "/O"
+    U                = "/U"
+    P                = "/P"
+    ENCRYPT_METADATA = "/EncryptMetadata"
+
+
+class UserAccessPermissions(IntFlag):
+    """TABLE 3.20 — User access permissions (bit flags)."""
+    PRINT                    = 4
+    MODIFY                   = 8
+    EXTRACT                  = 16
+    ADD_OR_MODIFY            = 32
+    FILL_FORM_FIELDS         = 256
+    EXTRACT_TEXT_AND_GRAPHICS = 512
+    ASSEMBLE_DOC             = 1024
+    PRINT_TO_REPRESENTATION  = 2048
+
+
+class FilterTypes:
+    """PDF stream filter type names."""
+    ASCII_HEX_DECODE = "/ASCIIHexDecode"
+    ASCII_85_DECODE  = "/ASCII85Decode"
+    LZW_DECODE       = "/LZWDecode"
+    FLATE_DECODE     = "/FlateDecode"   # zlib — most common in modern PDFs
+    RUN_LENGTH_DECODE = "/RunLengthDecode"
+    CCITT_FAX_DECODE = "/CCITTFaxDecode"
+    DCT_DECODE       = "/DCTDecode"     # JPEG
+    JPX_DECODE       = "/JPXDecode"     # JPEG 2000
+
+
+class FilterTypeAbbreviations:
+    """Short aliases for FilterTypes (PDF 1.2+)."""
+    AHx = "/AHx"
+    A85 = "/A85"
+    LZW = "/LZW"
+    FL  = "/Fl"
+    RL  = "/RL"
+    CCF = "/CCF"
+    DCT = "/DCT"
+
+
+class ColorSpaces:
+    DEVICE_RGB  = "/DeviceRGB"
+    DEVICE_CMYK = "/DeviceCMYK"
+    DEVICE_GRAY = "/DeviceGray"`,
+
+  'telegram/error.py': `#!/usr/bin/env python
+# python-telegram-bot v20.8
+# All exceptions raised by the library.
+
+__all__ = (
+    "BadRequest", "ChatMigrated", "Conflict", "EndPointNotFound",
+    "Forbidden", "InvalidToken", "NetworkError",
+    "PassportDecryptionError", "RetryAfter", "TelegramError", "TimedOut",
+)
+
+from typing import Optional, Tuple, Union
+
+
+class TelegramError(Exception):
+    """Base class for Telegram errors."""
+
+    __slots__ = ("message",)
+
+    def __init__(self, message: str):
+        super().__init__()
+        msg = message
+        for prefix in ("Error: ", "[Error]: ", "Bad Request: "):
+            if msg.startswith(prefix):
+                msg = msg[len(prefix):].capitalize()
+                break
+        self.message: str = msg
+
+    def __str__(self)  -> str: return self.message
+    def __repr__(self) -> str: return f"{self.__class__.__name__}('{self.message}')"
+
+
+class Forbidden(TelegramError):
+    """Bot lacks rights to perform the action (was: Unauthorized in v13)."""
+    __slots__ = ()
+
+class InvalidToken(TelegramError):
+    """Invalid bot token."""
+    __slots__ = ()
+    def __init__(self, message: Optional[str] = None):
+        super().__init__("Invalid token" if message is None else message)
+
+class NetworkError(TelegramError):
+    """Base class for networking errors."""
+    __slots__ = ()
+
+class BadRequest(NetworkError):
+    """Telegram could not process the request."""
+    __slots__ = ()
+
+class TimedOut(NetworkError):
+    """Request took too long to finish."""
+    __slots__ = ()
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message or "Timed out")
+
+class RetryAfter(TelegramError):
+    """Flood limits exceeded — retry after N seconds."""
+    __slots__ = ("retry_after",)
+    def __init__(self, retry_after: int):
+        super().__init__(f"Flood control exceeded. Retry in {retry_after} seconds")
+        self.retry_after: int = retry_after
+
+class ChatMigrated(TelegramError):
+    """Group migrated to supergroup — new chat_id attached."""
+    __slots__ = ("new_chat_id",)
+    def __init__(self, new_chat_id: int):
+        super().__init__(f"Group migrated to supergroup. New chat id: {new_chat_id}")
+        self.new_chat_id: int = new_chat_id
+
+class Conflict(TelegramError):
+    """Long poll or webhook conflicts with another one."""
+    __slots__ = ()
+
+class EndPointNotFound(TelegramError):
+    """Requested endpoint not found (added in 20.8)."""
+    __slots__ = ()`,
+
+  'telegram/_update.py': `#!/usr/bin/env python
+# python-telegram-bot v20.8
+# Represents any incoming Telegram update.
+
+from typing import TYPE_CHECKING, Final, List, Optional
+
+from telegram._callbackquery import CallbackQuery
+from telegram._message import Message
+from telegram._telegramobject import TelegramObject
+
+if TYPE_CHECKING:
+    from telegram import Bot, Chat, User
+
+
+class Update(TelegramObject):
+    """
+    Represents an incoming update from Telegram.
+    At most one optional field is present in any given update.
+
+    Your bot receives updates via ApplicationBuilder.run_polling().
+    Each handler checks update type to decide if it should fire:
+        - update.message          -> MessageHandler
+        - update.callback_query   -> CallbackQueryHandler (כפתור נלחץ)
+        - update.edited_message   -> edited message
+
+    How your main.py uses it:
+        async def handle_input(update: Update, context):
+            text = update.message.text
+            await update.message.reply_text("response")
+
+        async def handle_callback(update: Update, context):
+            query = update.callback_query
+            await query.answer()          # removes loading spinner
+            data = query.data             # e.g. "hint" or "skip"
+    """
+
+    # Update type constants (used in allowed_updates lists)
+    MESSAGE              : Final = "message"
+    EDITED_MESSAGE       : Final = "edited_message"
+    CALLBACK_QUERY       : Final = "callback_query"
+    CHANNEL_POST         : Final = "channel_post"
+    INLINE_QUERY         : Final = "inline_query"
+    POLL                 : Final = "poll"
+
+    __slots__ = (
+        "update_id",
+        "message",
+        "edited_message",
+        "callback_query",
+        "channel_post",
+        "inline_query",
+        "poll",
+        "poll_answer",
+        "my_chat_member",
+        "chat_member",
+        "chat_join_request",
+        "chat_boost",
+        "removed_chat_boost",
+    )
+
+    def __init__(
+        self,
+        update_id: int,
+        message: Optional[Message] = None,
+        callback_query: Optional[CallbackQuery] = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.update_id        = update_id
+        self.message          = message
+        self.callback_query   = callback_query
+
+    @property
+    def effective_message(self) -> Optional[Message]:
+        """Returns the message associated with this update (from any source)."""
+        return self.message or (
+            self.callback_query.message if self.callback_query else None
+        )`,
+
+  'telegram/_callbackquery.py': `#!/usr/bin/env python
+# python-telegram-bot v20.8
+# Represents a callback query from an inline keyboard button press.
+
+from typing import TYPE_CHECKING, Final, Optional, Sequence, Tuple, Union
+
+from telegram._telegramobject import TelegramObject
+from telegram._user import User
+
+if TYPE_CHECKING:
+    from telegram import Bot, InlineKeyboardMarkup, Message
+
+
+class CallbackQuery(TelegramObject):
+    """
+    Fired when a user clicks an inline keyboard button.
+
+    In your main.py, when user clicks "רמז" or "דלג":
+        async def handle_callback(update: Update, context):
+            query = update.callback_query
+            await query.answer()     # MUST call this — removes spinner
+            data = query.data        # "hint" | "skip" | "summary"
+            await query.edit_message_text("new text")
+            # or:
+            await update.effective_message.reply_text("response")
+
+    Attributes:
+        id           : Unique identifier for this query
+        from_user    : The User who clicked the button
+        message      : Message that contained the button
+        data         : Payload set in InlineKeyboardButton(callback_data=...)
+        chat_instance: Unique per-chat identifier (for scoring in games)
+    """
+
+    __slots__ = (
+        "id", "from_user", "chat_instance",
+        "message", "data", "inline_message_id", "game_short_name",
+    )
+
+    def __init__(
+        self,
+        id: str,
+        from_user: User,
+        chat_instance: str,
+        message=None,
+        data: Optional[str] = None,
+        inline_message_id: Optional[str] = None,
+        game_short_name: Optional[str] = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.id                = id
+        self.from_user         = from_user
+        self.chat_instance     = chat_instance
+        self.message           = message
+        self.data              = data
+        self.inline_message_id = inline_message_id
+        self.game_short_name   = game_short_name
+
+    async def answer(
+        self,
+        text: Optional[str] = None,
+        show_alert: bool = False,
+        **kwargs,
+    ) -> bool:
+        """
+        Answer the callback query.
+        MUST be called within 10 seconds or the button shows error.
+        text=None: silently dismiss spinner.
+        text="...": show popup notification to user.
+        show_alert=True: show a blocking alert dialog.
+        """
+        return await self.get_bot().answer_callback_query(
+            callback_query_id=self.id,
+            text=text,
+            show_alert=show_alert,
+        )`,
+
+  'telegram/_inline/inlinekeyboardbutton.py': `#!/usr/bin/env python
+# python-telegram-bot v20.8
+# Represents one button of an inline keyboard.
+
+from typing import TYPE_CHECKING, Final, Optional, Union
+from telegram._telegramobject import TelegramObject
+
+if TYPE_CHECKING:
+    from telegram import Bot
+
+
+class InlineKeyboardButton(TelegramObject):
+    """
+    One button in an InlineKeyboardMarkup.
+
+    How you use it in main.py:
+        keyboard = [
+            [
+                InlineKeyboardButton("💡 רמז", callback_data="hint"),
+                InlineKeyboardButton("⏭ דלג", callback_data="skip"),
+            ],
+            [InlineKeyboardButton("📊 סיכום", callback_data="summary")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("...", reply_markup=reply_markup)
+
+    When clicked → Update.callback_query.data == callback_data value.
+
+    Args:
+        text          : Label text shown on the button
+        callback_data : Up to 64 bytes, sent back via CallbackQuery.data
+        url           : Opens a URL when pressed (use instead of callback_data)
+        web_app       : Opens a Web App in a webview
+    """
+
+    __slots__ = (
+        "text", "url", "callback_data", "web_app",
+        "login_url", "switch_inline_query",
+        "switch_inline_query_current_chat",
+        "callback_game", "pay",
+        "switch_inline_query_chosen_chat",
+    )
+
+    def __init__(
+        self,
+        text: str,
+        url: Optional[str] = None,
+        callback_data: Optional[Union[str, object]] = None,
+        web_app=None,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.text          = text
+        self.url           = url
+        self.callback_data = callback_data
+        self.web_app       = web_app`,
+
+  'telegram/_inline/inlinekeyboardmarkup.py': `#!/usr/bin/env python
+# python-telegram-bot v20.8
+# Represents an inline keyboard grid attached to a message.
+
+from typing import Optional, Sequence, Tuple
+from telegram._inline.inlinekeyboardbutton import InlineKeyboardButton
+from telegram._telegramobject import TelegramObject
+
+if TYPE_CHECKING:
+    from telegram import Bot
+
+
+class InlineKeyboardMarkup(TelegramObject):
+    """
+    An inline keyboard that appears right next to the message it belongs to.
+    Buttons send callback queries back to the bot when clicked.
+
+    How you use it in main.py:
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+        keyboard = [
+            [
+                InlineKeyboardButton("💡 רמז",    callback_data="hint"),
+                InlineKeyboardButton("⏭ דלג",    callback_data="skip"),
+            ],
+            [InlineKeyboardButton("📊 סיכום", callback_data="summary")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await message.reply_text("...", reply_markup=reply_markup)
+
+    Args:
+        inline_keyboard: Sequence of button rows.
+                         Each row is a sequence of InlineKeyboardButton.
+
+    Attributes:
+        inline_keyboard: Tuple[Tuple[InlineKeyboardButton]]
+    """
+
+    __slots__ = ("inline_keyboard",)
+
+    def __init__(
+        self,
+        inline_keyboard: Sequence[Sequence[InlineKeyboardButton]],
+        *,
+        api_kwargs=None,
+    ):
+        super().__init__(api_kwargs=api_kwargs)
+        # Validate that each row contains only InlineKeyboardButton instances
+        self.inline_keyboard: Tuple[Tuple[InlineKeyboardButton, ...], ...] = tuple(
+            tuple(row) for row in inline_keyboard
+        )`,
+
+  'telegram/ext/filters.py': `#!/usr/bin/env python
+# python-telegram-bot v20.8
+# Filters for MessageHandler and CommandHandler.
+# Usage: from telegram.ext import filters
+
+__all__ = (
+    "ALL", "ANIMATION", "AUDIO", "CAPTION", "COMMAND", "CONTACT",
+    "FORWARDED", "LOCATION", "PHOTO", "POLL", "REPLY", "TEXT",
+    "BaseFilter", "Caption", "CaptionRegex", "Chat", "ChatType",
+    "Command", "Dice", "Document", "Entity", "ForwardedFrom",
+    "Language", "Mention", "MessageFilter", "Regex",
+    "SenderChat", "StatusUpdate", "Sticker", "Text",
+    "UpdateFilter", "UpdateType", "User", "ViaBot",
+)
+
+import mimetypes, re
+from abc import ABC, abstractmethod
+
+
+class BaseFilter(ABC):
+    """
+    Base class for all update filters.
+    Filters can be combined: filters.TEXT & ~filters.COMMAND
+    """
+    @abstractmethod
+    def check_update(self, update) -> bool: ...
+
+    def __and__(self, other): return _MergedFilter(self, "and", other)
+    def __or__(self,  other): return _MergedFilter(self, "or",  other)
+    def __invert__(self):     return _InvertedFilter(self)
+
+
+class MessageFilter(BaseFilter):
+    """Filter that checks the message inside an update."""
+
+
+class UpdateFilter(BaseFilter):
+    """Filter that checks the update itself."""
+
+
+# Ready-to-use filter singletons:
+
+TEXT    = None   # matches any text message (populated at module load)
+COMMAND = None   # matches /command style messages
+ALL     = None   # matches every update
+PHOTO   = None   # matches photo messages
+
+
+class Document(MessageFilter):
+    """
+    Filter for document messages.
+
+    Most commonly used in your code:
+        filters.Document.PDF  — matches PDF file uploads (your CV flow!)
+
+    Other subtypes:
+        filters.Document.IMAGE   — images sent as files
+        filters.Document.AUDIO   — audio files
+        filters.Document.VIDEO   — video files
+        filters.Document.MimeType("application/zip")  — by MIME type
+    """
+    PDF   = None  # MimeType("application/pdf")
+    IMAGE = None  # MimeType("image/...")
+    AUDIO = None  # MimeType("audio/...")
+    VIDEO = None  # MimeType("video/...")
+
+
+class Regex(MessageFilter):
+    """
+    Filter that matches message text against a regex pattern.
+    Example: filters.Regex(r'^/start')
+    """
+    def __init__(self, pattern): self.pattern = re.compile(pattern)
+    def check_update(self, update): return bool(self.pattern.search(update.message.text or ""))
+
+
+class ChatType(UpdateFilter):
+    """Filter by chat type: PRIVATE, GROUP, SUPERGROUP, CHANNEL."""
+    PRIVATE    = None
+    GROUP      = None
+    SUPERGROUP = None
+    CHANNEL    = None`,
+
+  'telegram/ext/_handlers/messagehandler.py': `#!/usr/bin/env python
+# python-telegram-bot v20.8
+# Handles incoming Telegram messages matching a filter.
+
+from typing import Any, Optional, TypeVar
+
+from telegram import Update
+from telegram.ext import filters as filters_module
+from telegram.ext._handlers.basehandler import BaseHandler
+from telegram.ext._utils.types import CCT, HandlerCallback
+
+if TYPE_CHECKING:
+    from telegram.ext import Application
+
+RT = TypeVar("RT")
+
+
+class MessageHandler(BaseHandler[Update, CCT]):
+    """
+    Handles Telegram messages that pass a filter check.
+
+    How you use it in main.py:
+        from telegram.ext import MessageHandler, filters
+
+        app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input))
+
+    When Telegram sends an update with a message, each MessageHandler's
+    filters.check_update(update) is called. If True, the handler's
+    callback is called with (update, context).
+
+    Args:
+        filters  : A BaseFilter. Pass None to match all messages.
+        callback : async def callback(update: Update, context: CallbackContext)
+        block    : If True (default), await callback before processing next update.
+    """
+
+    __slots__ = ("filters",)
+
+    def __init__(
+        self,
+        filters: Optional[filters_module.BaseFilter],
+        callback: HandlerCallback[Update, CCT, RT],
+        block: bool = True,
+    ) -> None:
+        super().__init__(callback, block=block)
+        self.filters = filters if filters is not None else filters_module.ALL
+
+    def check_update(self, update: object) -> bool:
+        """Returns True if this handler should process the update."""
+        if isinstance(update, Update) and update.effective_message:
+            return self.filters.check_update(update)
+        return False`,
+
+  'telegram/ext/_handlers/callbackqueryhandler.py': `#!/usr/bin/env python
+# python-telegram-bot v20.8
+# Handles callback queries from inline keyboard button presses.
+
+import asyncio, re
+from typing import Any, Callable, Match, Optional, Pattern, TypeVar, Union, cast
+
+from telegram import Update
+from telegram.ext._handlers.basehandler import BaseHandler
+from telegram.ext._utils.types import CCT, HandlerCallback
+
+if TYPE_CHECKING:
+    from telegram.ext import Application
+
+RT = TypeVar("RT")
+
+
+class CallbackQueryHandler(BaseHandler[Update, CCT]):
+    """
+    Handles callback queries (inline button presses).
+
+    How you use it in main.py:
+        from telegram.ext import CallbackQueryHandler
+
+        app.add_handler(CallbackQueryHandler(handle_callback))
+        # or, match only specific button data:
+        app.add_handler(CallbackQueryHandler(handle_hint, pattern="^hint$"))
+
+    In your handler:
+        async def handle_callback(update: Update, context):
+            query = update.callback_query
+            await query.answer()            # dismiss loading spinner
+            if query.data == "hint":
+                # ... send hint
+            elif query.data == "skip":
+                # ... skip question
+
+    Args:
+        callback : async def callback(update, context)
+        pattern  : str or regex to match against CallbackQuery.data.
+                   None (default) matches all callback queries.
+        block    : If True (default), await before processing next update.
+    """
+
+    __slots__ = ("pattern",)
+
+    def __init__(
+        self,
+        callback: HandlerCallback[Update, CCT, RT],
+        pattern: Optional[Union[str, Pattern[str], type, Callable]] = None,
+        block: bool = True,
+    ) -> None:
+        super().__init__(callback, block=block)
+        if isinstance(pattern, str):
+            pattern = re.compile(pattern)
+        self.pattern = pattern
+
+    def check_update(self, update: object) -> Optional[Union[bool, Match]]:
+        """Returns truthy if this handler should process the update."""
+        if isinstance(update, Update) and update.callback_query:
+            data = update.callback_query.data
+            if self.pattern is None:
+                return True
+            if isinstance(data, str):
+                match = self.pattern.match(data)
+                return match
+        return None`,
 
   'dotenv/main.py': `# python-dotenv v1.0.1
 # Reads key=value pairs from a .env file
@@ -633,6 +1457,148 @@ def load_dotenv(
         override=override, interpolate=interpolate,
         encoding=encoding,
     ).set_as_environment_variables()`,
+
+  'dotenv/parser.py': `# python-dotenv v1.0.1
+# Tokenizes .env file input into Binding records.
+
+import codecs, re
+from typing import IO, Iterator, Match, NamedTuple, Optional, Pattern, Sequence, Tuple
+
+def make_regex(string: str, extra_flags: int = 0) -> Pattern[str]:
+    return re.compile(string, re.UNICODE | extra_flags)
+
+# Token patterns used to parse each line of the .env file:
+_newline             = make_regex(r"(\r\n|\n|\r)")
+_whitespace          = make_regex(r"[^\S\r\n]*")
+_export              = make_regex(r"(?:export[^\S\r\n]+)?")
+_unquoted_key        = make_regex(r"([^=\#\s]+)")
+_single_quoted_key   = make_regex(r"'([^']+)'")
+_equal_sign          = make_regex(r"(=[^\S\r\n]*)")
+_single_quoted_value = make_regex(r"'((?:\\'|[^'])*)'")
+_double_quoted_value = make_regex(r'"((?:\\"|[^"])*)"')
+_unquoted_value      = make_regex(r"([^\r\n]*)")
+_comment             = make_regex(r"(?:[^\S\r\n]*#[^\r\n]*)?")
+_end_of_line         = make_regex(r"[^\S\r\n]*(?:\r\n|\n|\r|$)")
+
+
+class Original(NamedTuple):
+    string: str
+    line: int
+
+class Binding(NamedTuple):
+    key:      Optional[str]
+    value:    Optional[str]
+    original: Original
+    error:    bool
+
+
+class Reader:
+    """Stream reader with line-aware position tracking."""
+    def __init__(self, stream: IO[str]) -> None:
+        self.string   = stream.read()
+        self.position = Position.start()
+        self.mark     = Position.start()
+
+    def peek(self, count: int) -> str:
+        return self.string[self.position.chars : self.position.chars + count]
+
+    def read_regex(self, regex: Pattern[str]) -> Sequence[str]:
+        match = regex.match(self.string, self.position.chars)
+        if match is None:
+            raise Error("read_regex: Pattern not found")
+        self.position.advance(self.string[match.start():match.end()])
+        return match.groups()
+
+
+def parse_value(reader: Reader) -> str:
+    char = reader.peek(1)
+    if char == u"'":
+        (value,) = reader.read_regex(_single_quoted_value)
+        return decode_escapes(_single_quote_escapes, value)
+    elif char == u'"':
+        (value,) = reader.read_regex(_double_quoted_value)
+        return decode_escapes(_double_quote_escapes, value)
+    elif char in (u"", u"\\n", u"\\r"):
+        return u""
+    else:
+        (part,) = reader.read_regex(_unquoted_value)
+        return re.sub(r"\\s+#.*", "", part).rstrip()
+
+
+def parse_stream(stream: IO[str]) -> Iterator[Binding]:
+    """Main entry point — yields one Binding per line of the .env file."""
+    reader = Reader(stream)
+    while reader.has_next():
+        yield parse_binding(reader)`,
+
+  'dotenv/variables.py': `# python-dotenv v1.0.1
+# Resolves variable interpolation in .env values.
+# e.g. BASE=/app  FULL=\${BASE}/data  =>  FULL="/app/data"
+
+import re
+from abc import ABCMeta, abstractmethod
+from typing import Iterator, Mapping, Optional, Pattern
+
+# Matches \${VAR_NAME} or \${VAR_NAME:-default_value}
+_posix_variable: Pattern[str] = re.compile(
+    r"""
+    \$\{
+        (?P<name>[^\}:]*)
+        (?::-
+            (?P<default>[^\}]*)
+        )?
+    \}
+    """,
+    re.VERBOSE,
+)
+
+
+class Atom(metaclass=ABCMeta):
+    """A single segment of a parsed .env value (either literal text or a variable ref)."""
+    @abstractmethod
+    def resolve(self, env: Mapping[str, Optional[str]]) -> str: ...
+
+
+class Literal(Atom):
+    """A plain string segment with no variable substitution."""
+    def __init__(self, value: str) -> None:
+        self.value = value
+    def resolve(self, env: Mapping[str, Optional[str]]) -> str:
+        return self.value
+
+
+class Variable(Atom):
+    """A variable reference: \${NAME} or \${NAME:-default}."""
+    def __init__(self, name: str, default: Optional[str]) -> None:
+        self.name    = name
+        self.default = default
+    def resolve(self, env: Mapping[str, Optional[str]]) -> str:
+        default = self.default if self.default is not None else ""
+        result  = env.get(self.name, default)
+        return result if result is not None else ""
+
+
+def parse_variables(value: str) -> Iterator[Atom]:
+    """
+    Break a .env value string into Literal and Variable atoms.
+
+    Example:
+        value = "/base/\${APP_NAME}/logs"
+        list(parse_variables(value))
+        # => [Literal("/base/"), Variable("APP_NAME", None), Literal("/logs")]
+
+    Each atom is then resolved against the current env dict to produce
+    the final interpolated string.
+    """
+    cursor = 0
+    for match in _posix_variable.finditer(value):
+        (start, end) = match.span()
+        if start > cursor:
+            yield Literal(value=value[cursor:start])
+        yield Variable(name=match["name"], default=match["default"])
+        cursor = end
+    if cursor < len(value):
+        yield Literal(value=value[cursor:])`,
 };
 
 const LANG_COLOR = { py: '#4d9fff', md: '#a78bfa', yml: '#60d4b0', dock: '#2496ed', txt: '#7a8fa6' };
@@ -686,32 +1652,84 @@ const PanelHead = ({ icon, title, badge, right }) => (
 
 /* ─── file role descriptions ─── */
 const FILE_ROLES = {
-  'groq/__init__.py':
-    { role: 'groq SDK — Entry Point', ver: '0.4.2',
-      desc: 'נקודת הכניסה לספריית groq. מייצאת את כל מה שצריך: Groq (client), RateLimitError, AuthenticationError וכו׳. זה מה שקורה כש-main.py כותב: from groq import Groq' },
+  /* ── groq ── */
+  'groq/_version.py':
+    { role: 'groq SDK — Version', ver: '0.4.2',
+      desc: 'קובץ גרסה שנוצר אוטומטית מה-OpenAPI spec. מגדיר __version__ = "0.4.2". ה-SDK כולו נוצר (Stainless) מהמפרט הרשמי של Groq.' },
   'groq/_client.py':
     { role: 'groq SDK — HTTP Client', ver: '0.4.2',
-      desc: 'הלב של ה-SDK. מגדיר את class Groq שמחזיק את ה-api_key ומתחבר ל-https://api.groq.com. קורא אוטומטית את משתנה הסביבה GROQ_API_KEY אם לא הועבר ישירות.' },
+      desc: 'הלב של ה-SDK. מגדיר את class Groq שמחזיק את ה-api_key ומתחבר ל-https://api.groq.com. קורא אוטומטית את GROQ_API_KEY אם לא הועבר ישירות.' },
+  'groq/_exceptions.py':
+    { role: 'groq SDK — Exceptions', ver: '0.4.2',
+      desc: 'כל השגיאות שה-SDK זורק: APIError (בסיס), AuthenticationError (401 — מפתח שגוי), RateLimitError (429 — יותר מדי בקשות), InternalServerError (500+).' },
+  'groq/_streaming.py':
+    { role: 'groq SDK — SSE Streaming', ver: '0.4.2',
+      desc: 'תמיכה ב-Server-Sent Events לתגובות חלקיות בזמן אמת. הפרויקט שלך לא משתמש ב-stream=True — הוא מחכה לתשובה המלאה. קובץ זה מראה איך streaming היה עובד.' },
   'groq/resources/chat/completions.py':
-    { role: 'groq SDK — Chat API', ver: '0.4.2',
-      desc: 'הפונקציה שה-main.py קורא בכל תור: client.chat.completions.create(). מקבלת messages, model, temperature, max_tokens — ושולחת POST ל-/openai/v1/chat/completions.' },
-  'pypdf/__init__.py':
-    { role: 'pypdf — Entry Point', ver: '4.1.0',
-      desc: 'נקודת הכניסה לספריית pypdf. מייצאת PdfReader שמשמש את pdf_handler.py. ספרייה כתובה ב-Python טהור — לא צריך תלויות חיצוניות כמו poppler.' },
+    { role: 'groq SDK — Chat Completions', ver: '0.4.2',
+      desc: 'הפונקציה שה-main.py קורא בכל תור: client.chat.completions.create(). שולחת POST ל-/openai/v1/chat/completions ומחזירה ChatCompletion עם choices[0].message.content.' },
+  'groq/types/chat/chat_completion.py':
+    { role: 'groq SDK — ChatCompletion Type', ver: '0.4.2',
+      desc: 'ה-return type של create(). completion.choices[0].message.content הוא הטקסט שה-AI החזיר. usage מכיל ספירת טוקנים (prompt + completion).' },
+  'groq/types/chat/completion_create_params.py':
+    { role: 'groq SDK — Create Params', ver: '0.4.2',
+      desc: 'הפרמטרים שמועברים ל-create(). הפרויקט שלך משתמש ב: model, messages, temperature=0.6, max_tokens=800.' },
+
+  /* ── pypdf ── */
   'pypdf/_reader.py':
-    { role: 'pypdf — PDF Parser', ver: '4.1.0',
-      desc: 'הקלאס PdfReader שמפענח את מבנה ה-PDF הבינארי. reader.pages נותן רשימת עמודים, page.extract_text() מחלץ טקסט. זה הקוד שרץ כשמשתמש שולח CV.' },
-  'telegram/__init__.py':
-    { role: 'python-telegram-bot', ver: '20.8',
-      desc: 'ה-wrapper ל-Telegram Bot API. מספק Update (כל הודעה נכנסת), InlineKeyboardButton ו-InlineKeyboardMarkup (כפתורי רמז/דלג), ApplicationBuilder להרמת ה-polling loop.' },
+    { role: 'pypdf — PDF Reader', ver: '4.1.0',
+      desc: 'הקלאס PdfReader שמפענח את מבנה ה-PDF הבינארי. pdf_handler.py קורא: reader = PdfReader(BytesIO(bytes)). reader.pages → רשימת עמודים, page.extract_text() → טקסט.' },
+  'pypdf/errors.py':
+    { role: 'pypdf — Exceptions', ver: '4.1.0',
+      desc: 'כל השגיאות של pypdf: PdfReadError, EmptyFileError, WrongPasswordError, ParseError. pdf_handler.py תופס PdfReadError כאשר קובץ PDF פגום או מוצפן.' },
+  'pypdf/filters.py':
+    { role: 'pypdf — Stream Filters', ver: '4.1.0',
+      desc: 'מפענח זרמי נתונים בתוך קובץ PDF: FlateDecode (zlib), ASCII85Decode, LZWDecode, DCTDecode (JPEG). נקרא אוטומטית כשמחלצים טקסט או תמונות מעמוד.' },
+  'pypdf/constants.py':
+    { role: 'pypdf — PDF Constants', ver: '4.1.0',
+      desc: 'קבועים ממפרט PDF: שמות מפתחות (TrailerKeys, Core), סוגי פילטרים (FilterTypes), הרשאות גישה (UserAccessPermissions). API פנימי — לא נקרא ישירות מהפרויקט שלך.' },
+
+  /* ── telegram ── */
+  'telegram/error.py':
+    { role: 'telegram — Exceptions', ver: '20.8',
+      desc: 'כל שגיאות Telegram Bot API: TelegramError (בסיס), Forbidden (בוט חסום), NetworkError, BadRequest, TimedOut, RetryAfter (flood limit). חשוב לטיפול בשגיאות בוט.' },
+  'telegram/_update.py':
+    { role: 'telegram — Update Object', ver: '20.8',
+      desc: 'כל הודעה נכנסת מטלגרם עטופה ב-Update. update.message — טקסט/קובץ, update.callback_query — לחיצה על כפתור (רמז/דלג). הפרמטר הראשון של כל handler.' },
+  'telegram/_callbackquery.py':
+    { role: 'telegram — CallbackQuery', ver: '20.8',
+      desc: 'מופעל כשמשתמש לוחץ על כפתור inline. query.data מכיל את callback_data (למשל "hint"). חייבים לקרוא query.answer() תוך 10 שניות אחרת הכפתור מראה שגיאה.' },
+  'telegram/_inline/inlinekeyboardbutton.py':
+    { role: 'telegram — InlineKeyboardButton', ver: '20.8',
+      desc: 'כפתור בודד בתפריט inline. text — הטקסט שמוצג, callback_data — הערך שנשלח בחזרה לבוט. InlineKeyboardButton("💡 רמז", callback_data="hint").' },
+  'telegram/_inline/inlinekeyboardmarkup.py':
+    { role: 'telegram — InlineKeyboardMarkup', ver: '20.8',
+      desc: 'רשת של כפתורי InlineKeyboardButton. עוברת כ-reply_markup ל-reply_text(). בפרויקט שלך: שורת כפתורי [רמז | דלג] + שורת [סיכום].' },
+  'telegram/ext/filters.py':
+    { role: 'telegram.ext — Filters', ver: '20.8',
+      desc: 'מסננים לבחירת updates: filters.TEXT — הודעות טקסט, filters.Document.PDF — קבצי PDF (זרימת ה-CV!), filters.COMMAND — פקודות /start. ניתן לשלב: TEXT & ~COMMAND.' },
+  'telegram/ext/_handlers/messagehandler.py':
+    { role: 'telegram.ext — MessageHandler', ver: '20.8',
+      desc: 'מחבר בין filter לcallback: MessageHandler(filters.Document.PDF, handle_document). בודק כל update נכנס — אם הפילטר עובר, קורא ל-callback(update, context).' },
+  'telegram/ext/_handlers/callbackqueryhandler.py':
+    { role: 'telegram.ext — CallbackQueryHandler', ver: '20.8',
+      desc: 'מטפל בלחיצות כפתורים inline. CallbackQueryHandler(handle_callback, pattern="^hint$") — pattern מסנן לפי callback_data. בלי pattern: מקבל את כל הלחיצות.' },
+
+  /* ── dotenv ── */
   'dotenv/main.py':
-    { role: 'python-dotenv', ver: '1.0.1',
-      desc: 'קורא את קובץ ה-.env ומעלה את GROQ_API_KEY ו-TELEGRAM_TOKEN ל-os.environ. ה-.env לא עולה ל-GitHub (מוגן ע"י .gitignore) — קיים רק מקומית ובתוך Docker.' },
+    { role: 'python-dotenv — load_dotenv', ver: '1.0.1',
+      desc: 'מטען משתני סביבה מקובץ .env. load_dotenv() קורא GROQ_API_KEY ו-TELEGRAM_TOKEN ל-os.environ. ה-.env לא עולה ל-GitHub (.gitignore) — קיים רק מקומית ובתוך Docker.' },
+  'dotenv/parser.py':
+    { role: 'python-dotenv — Parser', ver: '1.0.1',
+      desc: 'מפענח כל שורה בקובץ .env ל-Binding(key, value). תומך במרכאות בודדות/כפולות, תגובות (#), ומפתחות עם export. מחזיר Iterator[Binding] דרך parse_stream().' },
+  'dotenv/variables.py':
+    { role: 'python-dotenv — Variables', ver: '1.0.1',
+      desc: 'מטפל ב-interpolation: \${VAR} ו-\${VAR:-default}. מפרק ערך .env לרצף Atom (Literal + Variable), מריץ resolve() עם מיפוי env נוכחי ומחזיר את הערך הסופי.' },
 };
 
 /* ─── LEFT: Brain Panel ─── */
 const BrainPanel = ({ active, setActive, hasPdf }) => {
-  const [dockerFile, setDockerFile] = useState('main.py');
+  const [dockerFile, setDockerFile] = useState('groq/_client.py');
   const isDocker = active === '__docker__';
 
   const tabs = [
