@@ -611,7 +611,7 @@ class DotEnv:
         if self._dict:
             return self._dict
         raw_values = self.parse()
-        # resolve variable interpolation: KEY=${OTHER_KEY}
+        # resolve variable interpolation: KEY=\${OTHER_KEY}
         if self.interpolate:
             self._dict = resolve_variables(raw_values, override=self.override)
         else:
