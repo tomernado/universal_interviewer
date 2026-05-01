@@ -13,5 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # העתק את שאר הפרויקט (הקוד והתיקיות) פנימה
 COPY . .
 
-# הפקודה שתרוץ כשהמכולה נדלקת
-CMD ["python", "main.py"]
+# פורט ה-API של סייר הקבצים
+EXPOSE 8080
+
+# הרץ את ה-API ואת הבוט במקביל
+CMD ["sh", "start.sh"]

@@ -1727,9 +1727,227 @@ const FILE_ROLES = {
       desc: 'מטפל ב-interpolation: \${VAR} ו-\${VAR:-default}. מפרק ערך .env לרצף Atom (Literal + Variable), מריץ resolve() עם מיפוי env נוכחי ומחזיר את הערך הסופי.' },
 };
 
+/* ─── Docker File Browser (live API) ─── */
+const API = 'http://localhost:8080';
+
+const EXT_COLOR = { py: '#4d9fff', md: '#a78bfa', txt: '#7a8fa6', sh: '#60d4b0', yml: '#60d4b0', yaml: '#60d4b0', json: '#f5a623', cfg: '#7a8fa6', toml: '#f5a623', rst: '#a78bfa' };
+const extColor  = name => EXT_COLOR[name.split('.').pop()] || '#3a4a5c';
+const extLabel  = name => (name.split('.').pop() || '').toUpperCase().slice(0, 4);
+
+const ROOTS = [
+  { label: '/app',           path: '/app',                                          color: '#f5a623' },
+  { label: 'site-packages',  path: '/usr/local/lib/python3.10/site-packages',       color: '#2496ed' },
+];
+
+const DockerBrowser = () => {
+  const [connected,   setConnected]   = useState(null);   // null=checking, true, false
+  const [root,        setRoot]        = useState(ROOTS[1]);
+  const [dirPath,     setDirPath]     = useState(ROOTS[1].path);
+  const [entries,     setEntries]     = useState([]);
+  const [selFile,     setSelFile]     = useState(null);
+  const [fileContent, setFileContent] = useState('');
+  const [fileSize,    setFileSize]    = useState(0);
+  const [loadingDir,  setLoadingDir]  = useState(false);
+  const [loadingFile, setLoadingFile] = useState(false);
+  const [apiError,    setApiError]    = useState('');
+
+  /* health-check on mount */
+  useEffect(() => {
+    fetch(`${API}/health`, { signal: AbortSignal.timeout(2000) })
+      .then(r => r.ok ? setConnected(true) : setConnected(false))
+      .catch(() => setConnected(false));
+  }, []);
+
+  /* fetch directory listing whenever dirPath changes */
+  useEffect(() => {
+    if (!connected) return;
+    setLoadingDir(true);
+    setApiError('');
+    fetch(`${API}/api/ls?path=${encodeURIComponent(dirPath)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { setApiError(data.error); setEntries([]); }
+        else            { setEntries(data.entries || []); }
+      })
+      .catch(e => setApiError(e.message))
+      .finally(() => setLoadingDir(false));
+  }, [connected, dirPath]);
+
+  /* navigate into a directory */
+  const openDir = path => {
+    setSelFile(null);
+    setFileContent('');
+    setDirPath(path);
+  };
+
+  /* read a file */
+  const openFile = fullPath => {
+    setSelFile(fullPath);
+    setFileContent('');
+    setLoadingFile(true);
+    fetch(`${API}/api/read?path=${encodeURIComponent(fullPath)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) setFileContent(`// Error: ${data.error}`);
+        else { setFileContent(data.content); setFileSize(data.size || 0); }
+      })
+      .catch(e => setFileContent(`// Network error: ${e.message}`))
+      .finally(() => setLoadingFile(false));
+  };
+
+  /* breadcrumb segments from dirPath */
+  const crumbs = (() => {
+    const rel = dirPath.startsWith(root.path) ? dirPath.slice(root.path.length) : dirPath;
+    const parts = rel.split('/').filter(Boolean);
+    const segs = [{ label: root.label, path: root.path }];
+    let cur = root.path;
+    parts.forEach(p => { cur += '/' + p; segs.push({ label: p, path: cur }); });
+    return segs;
+  })();
+
+  /* switch root */
+  const switchRoot = r => {
+    setRoot(r);
+    setDirPath(r.path);
+    setSelFile(null);
+    setFileContent('');
+  };
+
+  /* ── offline banner ── */
+  if (connected === false) return (
+    <div className="flex flex-col items-center justify-center flex-1 gap-3 p-6 text-center">
+      <div style={{ fontSize: 28 }}>🐳</div>
+      <div className="text-[11px] font-semibold" style={{ color: '#cdd9ea' }}>Docker API offline</div>
+      <div className="text-[10px] leading-relaxed" style={{ color: '#4a6070', maxWidth: 220 }}>
+        Start your container with port 8080 exposed:
+      </div>
+      <div className="text-[9px] px-3 py-2 rounded font-mono" style={{ background: '#0b0f1a', color: '#4d9fff', border: '1px solid #1a2540' }}>
+        docker run -p 8080:8080 --env-file .env modular-agent
+      </div>
+      <button
+        onClick={() => { setConnected(null); fetch(`${API}/health`, { signal: AbortSignal.timeout(2000) }).then(r => r.ok && setConnected(true)).catch(() => setConnected(false)); }}
+        className="text-[9px] px-3 py-1.5 rounded"
+        style={{ background: '#1a2540', color: '#00d4a0', border: '1px solid #1a3028', cursor: 'pointer' }}
+      >
+        Retry connection
+      </button>
+    </div>
+  );
+
+  /* ── checking banner ── */
+  if (connected === null) return (
+    <div className="flex items-center justify-center flex-1 gap-2" style={{ color: '#3a4a5c' }}>
+      <span className="pulse" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#2496ed' }} />
+      <span className="text-[10px]">Connecting to Docker API…</span>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-1 overflow-hidden">
+
+      {/* ── LEFT: directory listing ── */}
+      <div className="flex flex-col overflow-hidden border-r flex-shrink-0" style={{ width: 170, borderColor: '#1a2540', background: '#090d18' }}>
+
+        {/* Root switcher */}
+        <div className="flex border-b" style={{ borderColor: '#1a2540' }}>
+          {ROOTS.map(r => (
+            <button key={r.path} onClick={() => switchRoot(r)}
+              className="flex-1 py-1.5 text-[8.5px] font-bold border-0 bg-transparent"
+              style={{ color: root.path === r.path ? r.color : '#2a3a50', cursor: 'pointer', borderBottom: root.path === r.path ? `2px solid ${r.color}` : '2px solid transparent' }}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Breadcrumb */}
+        <div className="flex items-center flex-wrap gap-0.5 px-2 py-1.5 border-b" style={{ borderColor: '#111928' }}>
+          {crumbs.map((c, i) => (
+            <React.Fragment key={c.path}>
+              {i > 0 && <span style={{ color: '#1a2540', fontSize: 8 }}>/</span>}
+              <button onClick={() => openDir(c.path)}
+                className="text-[8px] border-0 bg-transparent p-0 hover:underline"
+                style={{ color: i === crumbs.length - 1 ? '#cdd9ea' : '#3a4a5c', cursor: 'pointer' }}>
+                {c.label}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Entries */}
+        <div className="overflow-y-auto flex-1 py-1">
+          {loadingDir && (
+            <div className="text-[9px] px-3 py-2" style={{ color: '#3a4a5c' }}>Loading…</div>
+          )}
+          {!loadingDir && apiError && (
+            <div className="text-[9px] px-3 py-2" style={{ color: '#f87171' }}>{apiError}</div>
+          )}
+          {!loadingDir && entries.map(e => {
+            const fullPath = dirPath + '/' + e.name;
+            const isSel   = selFile === fullPath;
+            const lc      = e.type === 'file' ? extColor(e.name) : '#2a3a50';
+            const ll      = e.type === 'file' ? extLabel(e.name) : '';
+            return (
+              <div key={e.name}
+                onClick={() => e.type === 'dir' ? openDir(fullPath) : openFile(fullPath)}
+                className="flex items-center gap-1.5 px-2 py-0.5 text-[9.5px] transition-colors"
+                style={{
+                  cursor: 'pointer',
+                  background: isSel ? '#1a2540' : 'transparent',
+                  color: e.type === 'dir' ? '#4d9fff' : (isSel ? '#cdd9ea' : '#7a8fa6'),
+                }}
+              >
+                {e.type === 'dir' ? (
+                  <span style={{ color: '#4d9fff', fontSize: 9 }}>▸</span>
+                ) : (
+                  <span className="text-[7px] px-0.5 rounded font-bold flex-shrink-0"
+                    style={{ background: lc + '22', color: lc }}>{ll}</span>
+                )}
+                <span className="truncate">{e.name}{e.type === 'dir' ? '/' : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── RIGHT: file content ── */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {selFile ? (
+          <>
+            {/* file path bar */}
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b flex-shrink-0 flex-wrap" style={{ borderColor: '#1a2540', background: '#0b0f1a' }}>
+              <span className="text-[8px] px-1 py-0.5 rounded font-bold flex-shrink-0"
+                style={{ background: extColor(selFile) + '22', color: extColor(selFile) }}>
+                {extLabel(selFile)}
+              </span>
+              <span className="text-[8.5px] truncate font-mono" style={{ color: '#4a6070' }}>
+                {selFile.replace('/usr/local/lib/python3.10/site-packages/', 'site-packages/').replace('/app/', '/app/')}
+              </span>
+              {fileSize > 0 && (
+                <span className="text-[8px] ml-auto flex-shrink-0" style={{ color: '#2a3a50' }}>
+                  {fileSize > 1024 ? `${(fileSize / 1024).toFixed(1)} KB` : `${fileSize} B`}
+                </span>
+              )}
+            </div>
+            {/* code */}
+            <div className="flex-1 overflow-y-auto p-3 text-[10px] leading-relaxed" style={{ color: '#7a8fa6' }}>
+              {loadingFile
+                ? <span style={{ color: '#3a4a5c' }}>Reading file…</span>
+                : <pre className="whitespace-pre-wrap break-words">{fileContent}</pre>}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center flex-1 gap-2 p-4 text-center">
+            <div style={{ fontSize: 22, opacity: 0.3 }}>📄</div>
+            <div className="text-[9px]" style={{ color: '#2a3a50' }}>Click a file to view its source</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /* ─── LEFT: Brain Panel ─── */
 const BrainPanel = ({ active, setActive, hasPdf }) => {
-  const [dockerFile, setDockerFile] = useState('groq/_client.py');
   const isDocker = active === '__docker__';
 
   const tabs = [
@@ -1739,16 +1957,12 @@ const BrainPanel = ({ active, setActive, hasPdf }) => {
     { id: '__docker__',      short: '🐳 /app', color: '#2496ed' },
   ];
 
-  const meta = FILE_ROLES[dockerFile] || {};
-  const content = DOCKER_CONTENTS[dockerFile] || '';
-  const lang = (DOCKER_TREE.find(f => f.path === dockerFile) || {}).lang || 'txt';
-
   return (
     <div className="panel panel-brain flex flex-col h-full">
       <PanelHead
         icon={ICONS.brain}
         title="AGENT BRAIN"
-        badge={isDocker ? 'DOCKER /app' : '3 modules'}
+        badge={isDocker ? 'LIVE DOCKER' : '3 modules'}
         right={<Dot on />}
       />
 
@@ -1778,73 +1992,8 @@ const BrainPanel = ({ active, setActive, hasPdf }) => {
         </div>
       )}
 
-      {/* Docker file browser */}
-      {isDocker && (
-        <div className="flex flex-1 overflow-hidden">
-
-          {/* File tree */}
-          <div className="overflow-y-auto border-r py-2 flex-shrink-0" style={{ width: 158, borderColor: '#1a2540', background: '#090d18' }}>
-            {DOCKER_TREE.map(f => {
-              const isDir  = f.type === 'dir';
-              const isSel  = f.path === dockerFile;
-              const lc     = LANG_COLOR[f.lang] || '#3a4a5c';
-              const ll     = LANG_LABEL[f.lang] || '';
-              const indent = f.path.split('/').length > (isDir ? 1 : 2) ? 20 : 8;
-              return (
-                <div
-                  key={f.path}
-                  onClick={() => !isDir && setDockerFile(f.path)}
-                  className="flex items-center gap-1.5 px-2 py-1 text-[9.5px] cursor-pointer transition-colors"
-                  style={{
-                    paddingLeft: indent,
-                    background:  isSel ? '#1a2540' : 'transparent',
-                    color:       isDir ? '#2a3a50' : (isSel ? '#cdd9ea' : '#7a8fa6'),
-                    cursor:      isDir ? 'default' : 'pointer',
-                  }}
-                >
-                  {isDir ? (
-                    <span style={{ color: '#2a3a50' }}>▸</span>
-                  ) : (
-                    <span className="text-[8px] px-0.5 rounded font-bold flex-shrink-0"
-                      style={{ background: lc + '22', color: lc }}>{ll}</span>
-                  )}
-                  <span className="truncate">{isDir ? f.path : f.path.split('/').pop()}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* File content + role badge */}
-          <div className="flex flex-col flex-1 overflow-hidden">
-            {/* Role badge */}
-            <div className="flex items-center gap-2 px-3 py-1.5 border-b flex-shrink-0 flex-wrap" style={{ borderColor: '#1a2540', background: '#0b0f1a' }}>
-              {meta.role && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
-                  style={{ background: (LANG_COLOR[lang] || '#3a4a5c') + '22', color: LANG_COLOR[lang] || '#3a4a5c' }}>
-                  {meta.role}
-                </span>
-              )}
-              {meta.ver && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded flex-shrink-0"
-                  style={{ background: '#1a2540', color: '#3a4a5c' }}>
-                  v{meta.ver}
-                </span>
-              )}
-              <span className="text-[9px] truncate" style={{ color: '#2a3a50' }}>site-packages/{dockerFile}</span>
-            </div>
-            {/* Role description */}
-            {meta.desc && (
-              <div className="px-3 py-2 text-[9.5px] leading-relaxed border-b flex-shrink-0" style={{ borderColor: '#111928', background: '#090d18', color: '#4a6070' }}>
-                {meta.desc}
-              </div>
-            )}
-            {/* Code */}
-            <div className="flex-1 overflow-y-auto p-3 text-[10px] leading-relaxed" style={{ color: '#7a8fa6' }}>
-              <pre className="whitespace-pre-wrap break-words">{content}</pre>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Docker file browser — live API */}
+      {isDocker && <DockerBrowser />}
 
       {/* PDF slot — hide when Docker tab open */}
       {!isDocker && (
